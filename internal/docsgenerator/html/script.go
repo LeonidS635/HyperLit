@@ -1,0 +1,34 @@
+package html
+
+const script = `<script>
+    function toggleVisibility(folderId) {
+        const folder = document.getElementById(folderId);
+        if (folder.classList.contains('hidden')) {
+            folder.classList.remove('hidden');
+        } else {
+            folder.classList.add('hidden');
+        }
+        openFile(folderId)
+    }
+
+    function openFile(fileName) {
+        fetch("/open-file?name=" + encodeURIComponent(fileName))
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Файл не найден или ошибка сервера");
+                }
+                return response.text();
+            })
+            .then(text => {
+                document.getElementById('content').innerHTML = "<pre>" + text + "</pre>";
+            })
+            .catch(error => {
+                document.getElementById('content').innerHTML = "<p>Ошибка: " + error.message + "</p>";
+            });
+    }
+
+
+    function openFolder(folderName) {
+        document.getElementById('content').innerHTML = "<h1>Документация для ${folderName}</h1><p>Заглушка: Документация для ${folderName} будет здесь.</p>";
+    }
+</script>`

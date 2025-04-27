@@ -1,10 +1,9 @@
 package entry
 
 type Entry struct {
-	Path string
-	Name string
 	Type byte
 	Size int
+	Name string
 	Hash []byte
 	Data []byte
 }
@@ -15,10 +14,6 @@ func (e Entry) GetType() byte {
 
 func (e Entry) GetName() string {
 	return e.Name
-}
-
-func (e Entry) GetPath() string {
-	return e.Path
 }
 
 func (e Entry) GetHash() []byte {

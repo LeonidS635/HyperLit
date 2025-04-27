@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/LeonidS635/HyperLit/internal/docsgenerator"
+	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/parser"
 	"github.com/LeonidS635/HyperLit/internal/vcs"
@@ -14,18 +16,23 @@ type HyperLit struct {
 	hlPath      string
 	projectPath string
 
+	rootSection      *trie.Node[info.TrieSection]
 	sectionsStatuses *info.SectionsStatuses
 
-	parser *parser.Parser
-	vcs    vcs.VCS
+	docsGenerator docsgenerator.Generator
+	parser        *parser.Parser
+	vcs           vcs.VCS
 }
 
 func New(path, projectPath string) *HyperLit {
 	return &HyperLit{
 		hlPath:      path,
 		projectPath: projectPath,
-		parser:      parser.NewParser(),
-		vcs:         vcs.NewVCS(path),
+		rootSection: trie.NewNode[info.TrieSection](),
+
+		docsGenerator: docsgenerator.NewGenerator(path),
+		parser:        parser.NewParser(),
+		vcs:           vcs.NewVCS(path),
 	}
 }
 

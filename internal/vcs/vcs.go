@@ -33,6 +33,18 @@ func (v VCS) LoadEntry(ctx context.Context, hash string) (entry.Entry, error) {
 	return v.storage.LoadEntry(hash)
 }
 
+func (v VCS) SaveEntry(ctx context.Context, entry entry.Interface) error {
+	return v.storage.SaveEntryTmp(entry)
+}
+
+func (v VCS) Delete(ctx context.Context, hash string) error {
+	return v.storage.Delete(hash)
+}
+
+func (v VCS) Dump(ctx context.Context) error {
+	return v.storage.Dump()
+}
+
 func (v VCS) Save(ctx context.Context, sectionsCh <-chan entry.Interface) error {
 	for {
 		select {
@@ -43,7 +55,7 @@ func (v VCS) Save(ctx context.Context, sectionsCh <-chan entry.Interface) error 
 				return nil
 			}
 
-			if err := v.storage.SaveEntry(section); err != nil {
+			if err := v.storage.SaveEntryTmp(section); err != nil {
 				return err
 			}
 		}

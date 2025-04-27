@@ -2,7 +2,6 @@ package info
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -11,11 +10,13 @@ import (
 )
 
 func Compare(
-	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section], rootPath string,
+	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section], rootNode *trie.Node[TrieSection],
+	rootPath string,
 ) *SectionsStatuses {
 	sectionsStatuses := newSectionsStatuses()
 	if sections == nil {
-		sectionsStatuses.Add(StatusCreated, SectionStatus{Path: rootPath, Trie: nil})
+		rootNode.Data.Status = StatusCreated
+		sectionsStatuses.Add(StatusCreated, SectionStatus{Path: rootPath, Trie: nil, FullTrieNode: rootNode})
 		return sectionsStatuses
 	}
 
@@ -24,7 +25,7 @@ func Compare(
 	done := make(chan struct{})
 
 	wg.Add(1)
-	go compare(ctx, files, sections, rootPath, sectionsStatuses, &wg)
+	go compare(ctx, files, sections, rootNode, rootPath, sectionsStatuses, &wg)
 	go func() {
 		wg.Wait()
 		close(done)
@@ -40,13 +41,15 @@ func Compare(
 }
 
 func compare(
-	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section],
+	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section], curNode *trie.Node[TrieSection],
 	path string, sectionsStatuses *SectionsStatuses, wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
 	}
+
+	curNode.Data.Section = sections.Data.This
 
 	fileInfo := files.Data
 	sectionInfo := sections.Data
@@ -55,32 +58,37 @@ func compare(
 		if !areEqual(fileInfo, sectionInfo) {
 			status = StatusProbablyModified
 		}
+		curNode.Data.Status = status
 
-		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: sections})
+		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: sections, FullTrieNode: curNode})
 		return
 	}
 
 	childrenFiles := files.GetAll()
 	childrenSections := sections.GetAll()
 
-	fmt.Println(path, childrenFiles, childrenSections)
-
 	seen := make(map[string]struct{})
 	for name, file := range childrenFiles {
 		filePath := filepath.Join(path, name)
+		nextNode := curNode.Insert(name)
 
 		if section, ok := childrenSections[name]; ok {
 			wg.Add(1)
-			go compare(ctx, file, section, filePath, sectionsStatuses, wg)
+			go compare(ctx, file, section, nextNode, filePath, sectionsStatuses, wg)
 		} else {
-			sectionsStatuses.Add(StatusCreated, SectionStatus{Path: filePath, Trie: nil})
+			nextNode.Data.Status = StatusCreated
+			sectionsStatuses.Add(StatusCreated, SectionStatus{Path: filePath, Trie: nil, FullTrieNode: nextNode})
 		}
 		seen[name] = struct{}{}
 	}
 
-	for name := range childrenSections {
+	for name, section := range childrenSections {
+		filePath := filepath.Join(path, name)
 		if _, ok := seen[name]; !ok {
-			sectionsStatuses.Add(StatusDeleted, SectionStatus{filepath.Join(path, name), nil})
+			nextNode := curNode.Insert(name)
+			nextNode.Data.Section = section.Data.This
+			nextNode.Data.Status = StatusCreated
+			sectionsStatuses.Add(StatusDeleted, SectionStatus{Path: filePath, Trie: nil, FullTrieNode: nextNode})
 		}
 	}
 }

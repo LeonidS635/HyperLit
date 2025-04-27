@@ -11,11 +11,10 @@ import (
 
 type Tree struct {
 	name    string
-	path    string
 	content []byte
 }
 
-func Prepare(name, path string) (*Tree, error) {
+func Prepare(name string) (*Tree, error) {
 	header, err := format.FormHeader(format.TreeType)
 	if err != nil {
 		return nil, err
@@ -23,9 +22,20 @@ func Prepare(name, path string) (*Tree, error) {
 
 	return &Tree{
 		name:    name,
-		path:    path,
 		content: header,
 	}, nil
+}
+
+func FromEntry(entry entry.Entry) (*Tree, error) {
+	t, err := Prepare(entry.Name)
+	if err != nil {
+		return nil, err
+	}
+	if err = format.PutSizeInHeader(t.content[:format.HeaderSize], entry.Size); err != nil {
+		return nil, err
+	}
+	t.content = append(t.content, entry.Data...)
+	return t, nil
 }
 
 func Parse(content []byte) ([]entry.Entry, error) {
@@ -70,8 +80,8 @@ func (t *Tree) GetName() string {
 	return t.name
 }
 
-func (t *Tree) GetPath() string {
-	return t.path
+func (t *Tree) SetName(name string) {
+	t.name = name
 }
 
 func (t *Tree) GetHash() []byte {

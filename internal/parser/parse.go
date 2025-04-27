@@ -17,7 +17,7 @@ func (p *Parser) Parse(ctx context.Context, path string) ([]byte, *trie.Node[inf
 		return nil, nil
 	}
 
-	section, err := tree.Prepare(fileInfo.Name(), path)
+	section, err := tree.Prepare(fileInfo.Name())
 	if err != nil {
 		helpers.SendCtx(ctx, p.errCh, err)
 		return nil, nil

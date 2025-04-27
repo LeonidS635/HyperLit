@@ -71,10 +71,15 @@ func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie
 		return
 	}
 
+	tr, err := tree.FromEntry(e)
+	if err != nil {
+		helpers.SendCtx(ctx, t.errCh, err)
+		return
+	}
+
 	section := info.Section{
-		Path:  e.Path,
 		Hash:  hash,
-		This:  e,
+		This:  tr,
 		MTime: sectionInfo.ModTime(),
 	}
 
@@ -89,7 +94,7 @@ func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie
 		case format.TreeType:
 			t.wg.Add(1)
 			next := curNode.Insert(childEntry.Name)
-			go t.traverse(ctx, hasher.ConvertToHex(childEntry.GetHash()), next)
+			go t.traverse(ctx, hasher.ConvertToHex(childEntry.Hash), next)
 		case format.CodeType:
 			section.Code = e
 		case format.DocsType:

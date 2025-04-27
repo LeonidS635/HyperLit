@@ -12,10 +12,6 @@ func (b *Blob) GetName() string {
 	return ""
 }
 
-func (b *Blob) GetPath() string {
-	return ""
-}
-
 func (b *Blob) GetHash() []byte {
 	return hasher.Calculate(b.content)
 }

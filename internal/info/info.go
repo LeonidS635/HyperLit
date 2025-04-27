@@ -7,6 +7,7 @@ import (
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
 type Section struct {
@@ -15,7 +16,7 @@ type Section struct {
 	MTime time.Time
 
 	Type int
-	This entry.Interface
+	This *tree.Tree
 	Code entry.Interface
 	Docs entry.Interface
 }
@@ -37,8 +38,14 @@ const (
 )
 
 type SectionStatus struct {
-	Path string
-	Trie *trie.Node[Section]
+	Path         string
+	Trie         *trie.Node[Section]
+	FullTrieNode *trie.Node[TrieSection]
+}
+
+type TrieSection struct {
+	Section *tree.Tree
+	Status  int
 }
 
 type SectionsStatuses struct {
@@ -72,15 +79,12 @@ func (s *SectionsStatuses) Print() {
 		for _, status := range statuses {
 			fmt.Printf("\t%s\n", status.Path)
 			status.Trie.Print()
+			status.FullTrieNode.Print()
 		}
 	}
 }
 
 func areEqual(fileInfo File, sectionInfo Section) bool {
-	fmt.Printf(
-		"MTime for file %s (%v) and section %s (%v):\n", fileInfo.Path, fileInfo.MTime, sectionInfo.Path,
-		sectionInfo.MTime,
-	)
 	return fileInfo.MTime.Before(sectionInfo.MTime)
 }
 

@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
+	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/blob"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
@@ -41,7 +44,7 @@ func (p *Parser) parseSection(
 			//}
 
 			name := string(bytes.TrimSpace(line[docsStartOffset+len(p.syntax.DocsStartSeq)+1:]))
-			subSection, err := tree.Prepare(name, section.GetPath())
+			subSection, err := tree.Prepare(name)
 			if err != nil {
 				return err
 			}
@@ -95,9 +98,15 @@ func (p *Parser) parseSection(
 	section.RegisterEntry(codeSection)
 	section.RegisterEntry(docsSection)
 
-	curNode.Data.This = section
-	curNode.Data.Code = codeSection
-	curNode.Data.Docs = docsSection
+	curNode.Data = info.Section{
+		Path:  "",
+		Hash:  hasher.ConvertToHex(section.GetHash()),
+		MTime: time.Now(),
+		Type:  format.TreeType,
+		This:  section,
+		Code:  codeSection,
+		Docs:  docsSection,
+	}
 
 	//docs := docsSection.GetData()
 	//code := codeSection.GetData()

@@ -6,11 +6,16 @@ import (
 )
 
 type ObjectsStorage struct {
+	tmpDir     string
 	workingDir string
 }
 
 func NewObjectsStorage(path string) ObjectsStorage {
-	return ObjectsStorage{workingDir: filepath.Join(path, objectsDirName)}
+	tmpPath, _ := os.MkdirTemp(path, objectsDirName)
+	return ObjectsStorage{
+		tmpDir:     tmpPath,
+		workingDir: filepath.Join(path, objectsDirName),
+	}
 }
 
 func (s ObjectsStorage) Init() error {
@@ -21,10 +26,10 @@ func (s ObjectsStorage) Init() error {
 	return nil
 }
 
-//func (s *ObjectsStorage) Delete(hash string) error {
-//	dirName, fileName := s.getDirAndFilePathsByHash(hash)
-//	return os.Remove(filepath.Join(dirName, fileName))
-//}
+func (s ObjectsStorage) Delete(hash string) error {
+	filePath := s.getFilePathByHash(hash)
+	return os.Remove(filePath)
+}
 
 func (s ObjectsStorage) getFilePathByHash(hash string) string {
 	dirName := filepath.Join(s.workingDir, hash[:2])

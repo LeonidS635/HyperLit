@@ -5,11 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
+	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
@@ -33,7 +36,7 @@ func (p *Parser) parseDirSection(
 	for _, file := range getDirEntries(ctx, path, p.sema, p.errCh) {
 		filePath := filepath.Join(path, file.Name())
 
-		subSection, err := tree.Prepare(file.Name(), filePath)
+		subSection, err := tree.Prepare(file.Name())
 		if err != nil {
 			helpers.SendCtx(ctx, p.errCh, err)
 			return
@@ -69,7 +72,16 @@ func (p *Parser) parseDirSection(
 	}
 
 	helpers.SendCtx(ctx, p.sectionsCh, Section(section))
-	curNode.Data.This = section
+
+	curNode.Data = info.Section{
+		Path:  path,
+		Hash:  hasher.ConvertToHex(section.GetHash()),
+		MTime: time.Now(),
+		Type:  format.TreeType,
+		This:  section,
+		Code:  nil,
+		Docs:  nil,
+	}
 }
 
 func getDirEntries(
