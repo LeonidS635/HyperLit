@@ -4,21 +4,21 @@ import (
 	"context"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
-	"github.com/LeonidS635/HyperLit/internal/vcs/index"
-	"github.com/LeonidS635/HyperLit/internal/vcs/objects"
+	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
+	"github.com/LeonidS635/HyperLit/internal/vcs/roothash"
 	"github.com/LeonidS635/HyperLit/internal/vcs/storage"
 )
 
 type VCS struct {
-	index   index.Index
-	storage storage.ObjectsStorage
+	rootHash roothash.RootHash
+	storage  storage.ObjectsStorage
 }
 
 func NewVCS(path string) VCS {
 	return VCS{
-		index:   index.NewIndex(path),
-		storage: storage.NewObjectsStorage(path),
+		rootHash: roothash.NewRoot(path),
+		storage:  storage.NewObjectsStorage(path),
 	}
 }
 
@@ -33,26 +33,24 @@ func (v VCS) LoadEntry(ctx context.Context, hash string) (entry.Entry, error) {
 	return v.storage.LoadEntry(hash)
 }
 
-func (v VCS) Save(ctx context.Context, entriesCh <-chan entry.Interface) error {
-	var entriesInfo []entry.Info
+func (v VCS) Save(ctx context.Context, sectionsCh <-chan entry.Interface) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
-		case e, ok := <-entriesCh:
+			return nil
+		case section, ok := <-sectionsCh:
 			if !ok {
 				return nil
 			}
 
-			entriesInfo = append(entriesInfo, entry.GetInfo(e))
-			if err := v.storage.SaveEntry(e); err != nil {
+			if err := v.storage.SaveEntry(section); err != nil {
 				return err
 			}
 		}
 	}
 }
 
-func (v VCS) Read(ctx context.Context, rootHash string) (*trie.Node[objects.Section], error) {
+func (v VCS) Read(ctx context.Context, rootHash string) (*trie.Node[info.Section], error) {
 	readCtx, readCancel := context.WithCancel(ctx)
 	defer readCancel()
 
@@ -69,6 +67,10 @@ func (v VCS) Read(ctx context.Context, rootHash string) (*trie.Node[objects.Sect
 	}
 }
 
-func (v VCS) Close() error {
-	return nil
+func (v VCS) SaveRootHash(hash []byte) error {
+	return v.rootHash.Save(hash)
+}
+
+func (v VCS) GetRootHash() (string, error) {
+	return v.rootHash.Get()
 }

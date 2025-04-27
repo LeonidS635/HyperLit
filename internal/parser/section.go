@@ -7,12 +7,15 @@ import (
 	"fmt"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
+	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
+	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/blob"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
 func (p *Parser) parseSection(
 	ctx context.Context, fileScanner *bufio.Scanner, lineNumber *int, section *tree.Tree,
+	curNode *trie.Node[info.Section],
 ) error {
 	if helpers.IsCtxCancelled(ctx) {
 		return nil
@@ -42,8 +45,9 @@ func (p *Parser) parseSection(
 			if err != nil {
 				return err
 			}
+			nextNode := curNode.Insert(name)
 
-			if err = p.parseSection(ctx, fileScanner, lineNumber, subSection); err != nil {
+			if err = p.parseSection(ctx, fileScanner, lineNumber, subSection, nextNode); err != nil {
 				return err
 			}
 			if err = section.RegisterEntry(subSection); err != nil {
@@ -90,6 +94,10 @@ func (p *Parser) parseSection(
 
 	section.RegisterEntry(codeSection)
 	section.RegisterEntry(docsSection)
+
+	curNode.Data.This = section
+	curNode.Data.Code = codeSection
+	curNode.Data.Docs = docsSection
 
 	//docs := docsSection.GetData()
 	//code := codeSection.GetData()

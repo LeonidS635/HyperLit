@@ -3,13 +3,15 @@ package hashtraverser
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
+	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
-	"github.com/LeonidS635/HyperLit/internal/vcs/objects"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
@@ -21,7 +23,7 @@ type HashTraverser struct {
 
 	loadEntryFn func(hash string) (entry.Entry, error)
 
-	sectionsTrie *trie.Node[objects.Section]
+	sectionsTrie *trie.Node[info.Section]
 	errCh        chan error
 }
 
@@ -30,12 +32,12 @@ func NewHashTraverser(loadEntryFn func(hash string) (entry.Entry, error)) *HashT
 		sema:         resourceslimiter.NewSemaphore(),
 		wg:           &sync.WaitGroup{},
 		loadEntryFn:  loadEntryFn,
-		sectionsTrie: trie.NewNode[objects.Section](),
+		sectionsTrie: trie.NewNode[info.Section](),
 		errCh:        make(chan error),
 	}
 }
 
-func (t *HashTraverser) GetOutputs() (*trie.Node[objects.Section], <-chan error) {
+func (t *HashTraverser) GetOutputs() (*trie.Node[info.Section], <-chan error) {
 	return t.sectionsTrie, t.errCh
 }
 
@@ -47,7 +49,7 @@ func (t *HashTraverser) Traverse(ctx context.Context, rootHash string) {
 	close(t.errCh)
 }
 
-func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie.Node[objects.Section]) {
+func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie.Node[info.Section]) {
 	defer t.wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
@@ -63,7 +65,18 @@ func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie
 		return
 	}
 
-	section := objects.Section{Path: e.Path}
+	sectionInfo, err := os.Stat(filepath.Join("hl/objects", hash[:2], hash[2:]))
+	if err != nil {
+		helpers.SendCtx(ctx, t.errCh, err)
+		return
+	}
+
+	section := info.Section{
+		Path:  e.Path,
+		Hash:  hash,
+		This:  e,
+		MTime: sectionInfo.ModTime(),
+	}
 
 	childEntries, err := tree.Parse(e.Data)
 	if err != nil {

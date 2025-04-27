@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"sync"
+
 	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
 )
@@ -16,10 +18,11 @@ type Section = entry.Interface
 type Parser struct {
 	syntax Syntax
 
+	sema *resourceslimiter.Semaphore
+	wg   *sync.WaitGroup
+
 	sectionsCh chan Section
 	errCh      chan error
-
-	resourcesControlSema *resourceslimiter.Semaphore
 }
 
 func NewParser() *Parser {
@@ -29,17 +32,18 @@ func NewParser() *Parser {
 			DocsEndSeq:   []byte("@@/docs"),
 			CodeEndSeq:   []byte("@@/code"),
 		},
-		resourcesControlSema: resourceslimiter.NewSemaphore(),
+		sema: resourceslimiter.NewSemaphore(),
+		wg:   &sync.WaitGroup{},
 	}
 }
 
-// Sections must be called before Parse
-func (p *Parser) Sections() <-chan Section {
+func (p *Parser) InitChannels() (<-chan Section, <-chan error) {
 	p.sectionsCh = make(chan Section)
-	return p.sectionsCh
+	p.errCh = make(chan error)
+	return p.sectionsCh, p.errCh
 }
 
-// Close must be called after Parse finished
-func (p *Parser) Close() {
+func (p *Parser) CloseChannels() {
 	close(p.sectionsCh)
+	close(p.errCh)
 }

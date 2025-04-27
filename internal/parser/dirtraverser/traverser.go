@@ -10,6 +10,7 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
+	"github.com/LeonidS635/HyperLit/internal/info"
 )
 
 type FileInfo struct {
@@ -22,7 +23,7 @@ type DirTraverser struct {
 	sema *resourceslimiter.Semaphore
 	wg   *sync.WaitGroup
 
-	filesTrie *trie.Node[FileInfo]
+	filesTrie *trie.Node[info.File]
 	errCh     chan error
 }
 
@@ -30,12 +31,12 @@ func NewDirTraverser() *DirTraverser {
 	return &DirTraverser{
 		sema:      resourceslimiter.NewSemaphore(),
 		wg:        &sync.WaitGroup{},
-		filesTrie: trie.NewNode[FileInfo](),
+		filesTrie: trie.NewNode[info.File](),
 		errCh:     make(chan error),
 	}
 }
 
-func (t *DirTraverser) GetOutputs() (*trie.Node[FileInfo], <-chan error) {
+func (t *DirTraverser) GetOutputs() (*trie.Node[info.File], <-chan error) {
 	return t.filesTrie, t.errCh
 }
 
@@ -47,25 +48,26 @@ func (t *DirTraverser) Traverse(ctx context.Context, path string) {
 	close(t.errCh)
 }
 
-func (t *DirTraverser) traverse(ctx context.Context, path string, curNode *trie.Node[FileInfo]) {
+func (t *DirTraverser) traverse(ctx context.Context, path string, curNode *trie.Node[info.File]) {
 	defer t.wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
 	}
 
-	info, err := os.Stat(path)
+	fileInfo, err := os.Stat(path)
 	if err != nil {
 		helpers.SendCtx(ctx, t.errCh, err)
 		return
 	}
 
-	curNode.Data = FileInfo{
-		Path:    path,
-		Size:    info.Size(),
-		ModTime: info.ModTime(),
+	curNode.Data = info.File{
+		IsDir: fileInfo.IsDir(),
+		Path:  path,
+		Size:  fileInfo.Size(),
+		MTime: fileInfo.ModTime(),
 	}
 
-	if info.IsDir() {
+	if fileInfo.IsDir() {
 		for _, entry := range t.getDirEntries(ctx, path) {
 			next := curNode.Insert(entry.Name())
 			t.wg.Add(1)

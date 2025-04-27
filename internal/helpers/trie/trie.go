@@ -1,6 +1,14 @@
 package trie
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
+
+type Root[Data any] struct {
+	path string
+	next *Node[Data]
+}
 
 type Node[Data any] struct {
 	mu       sync.RWMutex
@@ -35,23 +43,14 @@ func (n *Node[Data]) GetAll() map[string]*Node[Data] {
 	return n.children
 }
 
-//func (n *Node[Data]) SetData(key string, data Data) bool {
-//	child, ok := n.children[key]
-//	if !ok {
-//		return false
-//	}
-//	child.data = data
-//	return true
-//}
-//
-//func (n *Node[Data]) GetData(key string) (Data, bool) {
-//	n.mu.RLock()
-//	defer n.mu.RUnlock()
-//
-//	child, ok := n.children[key]
-//	if !ok {
-//		var empty Data
-//		return empty, false
-//	}
-//	return child.data, true
-//}
+func (n *Node[Data]) Print() {
+	if n == nil {
+		return
+	}
+
+	fmt.Println(n.Data)
+	for name, child := range n.children {
+		fmt.Println(name)
+		child.Print()
+	}
+}

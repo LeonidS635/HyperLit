@@ -25,6 +25,6 @@ func (e Entry) GetHash() []byte {
 	return e.Hash
 }
 
-func (e Entry) GetData() ([]byte, error) {
-	return e.Data, nil
+func (e Entry) GetData() []byte {
+	return e.Data
 }

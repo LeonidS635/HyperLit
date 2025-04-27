@@ -14,7 +14,6 @@ func (s ObjectsStorage) SaveEntry(entry entry.Interface) error {
 }
 
 func (s ObjectsStorage) saveData(hash string, data []byte) error {
-	fmt.Println(s.workingDir)
 	dirName := filepath.Join(s.workingDir, hash[:2])
 	fileName := filepath.Join(dirName, hash[2:])
 

@@ -1,93 +1,90 @@
 package parser
 
-//import (
-//	"context"
-//	"os"
-//	"path/filepath"
-//	"sync"
-//
-//	"github.com/LeonidS635/HyperLit/internal/helpers"
-//	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
-//)
-//
-//func (p *Parser) ParseDir(ctx context.Context, path string) {
-//	if helpers.IsCtxCancelled(ctx) {
-//		return
-//	}
-//
-//	files, err := os.ReadDir(path)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	section, err := tree.Prepare(filepath.Base(path), path)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	for _, file := range files {
-//		if file.IsDir() {
-//			dirSection, err := p.ParseDir(ctx, filepath.Join(path, file.Name()))
-//			if err != nil {
-//				return nil, err
-//			}
-//			section.RegisterEntry(dirSection)
-//		} else {
-//			fileSection, err := p.ParseFile(ctx, filepath.Join(path, file.Name()))
-//			if err != nil {
-//				return nil, err
-//			}
-//			section.RegisterEntry(fileSection)
-//		}
-//	}
-//	return section, nil
-//}
-//
-//func (p *Parser) parseDir(ctx context.Context, path, name string, wg *sync.WaitGroup) (Section, error) {
-//	if helpers.IsCtxCancelled(ctx) {
-//		return nil, nil
-//	}
-//
-//	files, err := os.ReadDir(path)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	section, err := tree.Prepare(name)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	errs := make(chan error)
-//	for _, file := range files {
-//		if file.IsDir() {
-//			//wg.Add(1)
-//			//go func() {
-//			//	defer wg.Done()
-//			dirSection, err := p.parseDir(ctx, filepath.Join(path, file.Name()), file.Name(), wg)
-//			if err != nil {
-//				//errs <- err
-//				return nil, err
-//			}
-//			section.RegisterEntry(dirSection)
-//			//}()
-//		} else {
-//			fileSection, err := p.ParseFile(ctx, filepath.Join(path, file.Name()), file.Name())
-//			if err != nil {
-//				return nil, err
-//			}
-//			section.RegisterEntry(fileSection)
-//		}
-//	}
-//
-//	wg.Wait()
-//
-//	select {
-//	case <-ctx.Done():
-//		return nil, nil
-//	case err = <-errs:
-//		return nil, err
-//	default:
-//		return section, nil
-//	}
-//}
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"sync"
+
+	"github.com/LeonidS635/HyperLit/internal/helpers"
+	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
+	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
+	"github.com/LeonidS635/HyperLit/internal/info"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
+)
+
+func (p *Parser) parseDir(ctx context.Context, path string, rootSection *tree.Tree, rootNode *trie.Node[info.Section]) {
+	p.wg.Add(1)
+	go p.parseDirSection(ctx, path, rootSection, rootNode)
+	p.wg.Wait()
+}
+
+func (p *Parser) parseDirSection(
+	ctx context.Context, path string, section *tree.Tree, curNode *trie.Node[info.Section],
+) {
+	defer p.wg.Done()
+	if helpers.IsCtxCancelled(ctx) {
+		return
+	}
+
+	sectionWg := sync.WaitGroup{}
+	done := make(chan struct{})
+
+	for _, file := range getDirEntries(ctx, path, p.sema, p.errCh) {
+		filePath := filepath.Join(path, file.Name())
+
+		subSection, err := tree.Prepare(file.Name(), filePath)
+		if err != nil {
+			helpers.SendCtx(ctx, p.errCh, err)
+			return
+		}
+		nextNode := curNode.Insert(file.Name())
+
+		sectionWg.Add(1)
+		if file.IsDir() {
+			p.wg.Add(1)
+			go func() {
+				defer sectionWg.Done()
+				p.parseDirSection(ctx, filePath, subSection, nextNode)
+				section.RegisterEntry(subSection)
+			}()
+		} else {
+			p.wg.Add(1)
+			go func() {
+				defer sectionWg.Done()
+				p.parseFile(ctx, filePath, subSection, nextNode)
+				section.RegisterEntry(subSection)
+			}()
+		}
+	}
+	go func() {
+		sectionWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-done:
+	}
+
+	helpers.SendCtx(ctx, p.sectionsCh, Section(section))
+	curNode.Data.This = section
+}
+
+func getDirEntries(
+	ctx context.Context, path string, sema *resourceslimiter.Semaphore, errCh chan<- error,
+) []os.DirEntry {
+	ok := sema.Acquire(ctx)
+	if !ok {
+		return nil
+	}
+	defer sema.Release()
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		helpers.SendCtx(ctx, errCh, err)
+		return nil
+	}
+	return entries
+}
