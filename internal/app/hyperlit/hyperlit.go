@@ -25,15 +25,16 @@ type HyperLit struct {
 }
 
 func New(path, projectPath string) *HyperLit {
-	return &HyperLit{
+	h := &HyperLit{
 		hlPath:      path,
 		projectPath: projectPath,
 		rootSection: trie.NewNode[info.TrieSection](),
 
-		docsGenerator: docsgenerator.NewGenerator(path),
-		parser:        parser.NewParser(),
-		vcs:           vcs.NewVCS(path),
+		parser: parser.NewParser(),
+		vcs:    vcs.NewVCS(path),
 	}
+	h.docsGenerator = docsgenerator.NewGenerator(path, h.vcs.GetDocsAndCodeFromTree)
+	return h
 }
 
 func (h *HyperLit) Init(ctx context.Context) {
@@ -45,23 +46,6 @@ func (h *HyperLit) Init(ctx context.Context) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func (h *HyperLit) Status(ctx context.Context) {
-	err := h.getSectionsStatuses(ctx)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	//for status, paths := range h.sectionsStatuses.Get(info.StatusProbablyModified) {
-	//	fmt.Println(paths, status)
-	//}
-	fmt.Println("Before saving:")
-	h.sectionsStatuses.Print()
-	fmt.Println("After saving:")
-	fmt.Println(h.commitSections(ctx))
-	h.sectionsStatuses.Print()
 }
 
 func (h *HyperLit) Diff() {}

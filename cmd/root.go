@@ -23,6 +23,5 @@ func Execute() {
 func InitCmds(hl *hyperlit.HyperLit) {
 	rootCmd.AddCommand(initCmd(hl))
 	rootCmd.AddCommand(commitCmd(hl))
-	rootCmd.AddCommand(statusCmd(hl))
 	rootCmd.AddCommand(docsCmd(hl))
 }

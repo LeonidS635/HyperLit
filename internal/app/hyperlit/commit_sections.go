@@ -2,12 +2,10 @@ package hyperlit
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/info"
-	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
 )
 
 func (h *HyperLit) commitSections(ctx context.Context) error {
@@ -26,8 +24,11 @@ func (h *HyperLit) commitSections(ctx context.Context) error {
 		saveCtxCancel()
 	}()
 
+	modifiedSections := h.sectionsStatuses.Get(info.StatusProbablyModified)
+	modifiedSections = append(modifiedSections, h.sectionsStatuses.Get(info.StatusCreated)...)
+
 	wg := &sync.WaitGroup{}
-	for _, sectionStatus := range h.sectionsStatuses.Get(info.StatusProbablyModified) {
+	for _, sectionStatus := range modifiedSections {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -48,28 +49,6 @@ func (h *HyperLit) commitSections(ctx context.Context) error {
 		}()
 	}
 
-	createdSections := h.sectionsStatuses.Get(info.StatusCreated)
-	h.sectionsStatuses.Remove(info.StatusCreated)
-
-	for _, sectionStatus := range createdSections {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			rootHash, rootNode := h.parser.Parse(saveCtx, sectionStatus.Path)
-			if rootHash != nil && sectionStatus.Path == h.projectPath {
-				if err := h.vcs.SaveRootHash(rootHash); err != nil {
-					helpers.SendCtx(saveCtx, errCh, err)
-					saveCtxCancel()
-				}
-			}
-			if rootNode != nil {
-				sectionStatus.Trie = rootNode
-				h.sectionsStatuses.Add(info.StatusCreated, sectionStatus)
-			}
-		}()
-	}
-
 	go func() {
 		wg.Wait()
 		h.parser.CloseChannels()
@@ -85,22 +64,6 @@ func (h *HyperLit) commitSections(ctx context.Context) error {
 	case err, ok := <-sectionErrCh:
 		if ok {
 			return err
-		}
-	}
-
-	h.sectionsStatuses.Remove(info.StatusProbablyModified)
-
-	for _, section := range h.sectionsStatuses.Get(info.StatusModified) {
-		//section.FullTrieNode.Data = info.TrieSection{
-		//	Section: section.Trie.Data.This,
-		//	Status:  info.StatusModified,
-		//}
-		fmt.Println(hasher.ConvertToHex(section.FullTrieNode.Data.Section.GetHash()))
-	}
-	for _, section := range h.sectionsStatuses.Get(info.StatusCreated) {
-		section.FullTrieNode.Data = info.TrieSection{
-			Section: section.Trie.Data.This,
-			Status:  info.StatusCreated,
 		}
 	}
 

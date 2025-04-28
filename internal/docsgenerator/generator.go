@@ -13,17 +13,22 @@ const indexHTMLFile = "index.html"
 const serverPort = 8123
 
 type Generator struct {
-	path string
+	htmlFilepath string
+
+	parseFileFn func(hash string) ([]byte, []byte, error)
 }
 
-func NewGenerator(path string) Generator {
-	return Generator{path: filepath.Join(path, indexHTMLFile)}
+func NewGenerator(rootPath string, parseFileFn func(hash string) ([]byte, []byte, error)) Generator {
+	return Generator{
+		htmlFilepath: filepath.Join(rootPath, indexHTMLFile),
+		parseFileFn:  parseFileFn,
+	}
 }
 
-func (g Generator) Generate(rootNode *trie.Node[info.Section], rootName string) error {
-	return html.Generate(g.path, rootNode, rootName)
+func (g Generator) Generate(rootNode *trie.Node[info.TrieSection], rootName string) error {
+	return html.Generate(g.htmlFilepath, rootNode, rootName)
 }
 
 func (g Generator) StartServer() error {
-	return server.Start(serverPort, g.path)
+	return server.Start(serverPort, g.htmlFilepath, g.parseFileFn)
 }

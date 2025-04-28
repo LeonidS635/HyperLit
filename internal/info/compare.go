@@ -54,12 +54,8 @@ func compare(
 	fileInfo := files.Data
 	sectionInfo := sections.Data
 	if !fileInfo.IsDir {
-		status := StatusUnmodified
-		if !areEqual(fileInfo, sectionInfo) {
-			status = StatusProbablyModified
-		}
+		status := compareFileAndSection(fileInfo, sectionInfo)
 		curNode.Data.Status = status
-
 		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: sections, FullTrieNode: curNode})
 		return
 	}

@@ -58,7 +58,7 @@ func (h *HyperLit) getSectionsStatuses(ctx context.Context) error {
 	case <-done:
 	}
 
-	fmt.Println(h.docsGenerator.Generate(sectionsRoot, h.projectPath))
+	//fmt.Println(h.docsGenerator.Generate(sectionsRoot, h.projectPath))
 
 	h.sectionsStatuses = info.Compare(ctx, filesRoot, sectionsRoot, h.rootSection, h.projectPath)
 	return nil

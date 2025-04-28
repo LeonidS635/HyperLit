@@ -79,8 +79,8 @@ func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie
 
 	section := info.Section{
 		Hash:  hash,
-		This:  tr,
 		MTime: sectionInfo.ModTime(),
+		This:  tr,
 	}
 
 	childEntries, err := tree.Parse(e.Data)
@@ -96,9 +96,9 @@ func (t *HashTraverser) traverse(ctx context.Context, hash string, curNode *trie
 			next := curNode.Insert(childEntry.Name)
 			go t.traverse(ctx, hasher.ConvertToHex(childEntry.Hash), next)
 		case format.CodeType:
-			section.Code = e
+			section.CodeHash = hasher.ConvertToHex(childEntry.Hash)
 		case format.DocsType:
-			section.Docs = e
+			section.DocsHash = hasher.ConvertToHex(childEntry.Hash)
 		default:
 			helpers.SendCtx(ctx, t.errCh, fmt.Errorf("unknown entry type: %v", e.Type))
 			return

@@ -2,10 +2,14 @@ package vcs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
+	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
+	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 	"github.com/LeonidS635/HyperLit/internal/vcs/roothash"
 	"github.com/LeonidS635/HyperLit/internal/vcs/storage"
 )
@@ -43,6 +47,43 @@ func (v VCS) Delete(ctx context.Context, hash string) error {
 
 func (v VCS) Dump(ctx context.Context) error {
 	return v.storage.Dump()
+}
+
+func (v VCS) GetDocsAndCodeFromTree(hash string) ([]byte, []byte, error) {
+	e, err := v.storage.LoadEntry(hash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if e.Type != format.TreeType {
+		return nil, nil, fmt.Errorf(
+			"error forming documentatoin: invalid entry type for %s (expected tree, got %v)", hash, e.Type,
+		)
+	}
+	children, err := tree.Parse(e.Data)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var docs, code []byte
+	for _, child := range children {
+		switch child.Type {
+		case format.CodeType:
+			childEntry, err := v.storage.LoadEntry(hasher.ConvertToHex(child.Hash))
+			if err != nil {
+				return nil, nil, err
+			}
+			code = childEntry.Data
+		case format.DocsType:
+			childEntry, err := v.storage.LoadEntry(hasher.ConvertToHex(child.Hash))
+			if err != nil {
+				return nil, nil, err
+			}
+			docs = childEntry.Data
+		default:
+		}
+	}
+	return docs, code, nil
 }
 
 func (v VCS) Save(ctx context.Context, sectionsCh <-chan entry.Interface) error {

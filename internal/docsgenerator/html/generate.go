@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
+	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
 )
 
 const (
@@ -14,7 +16,7 @@ const (
 	ulOpenTemplate  = "<ul id=%s class='hidden nested'>"
 )
 
-func Generate(htmlFilePath string, rootNode *trie.Node[info.Section], rootName string) error {
+func Generate(htmlFilePath string, rootNode *trie.Node[info.TrieSection], rootName string) error {
 	htmlFile, err := os.Create(htmlFilePath)
 	if err != nil {
 		return err
@@ -55,11 +57,14 @@ func Generate(htmlFilePath string, rootNode *trie.Node[info.Section], rootName s
 	return nil
 }
 
-func gen(node *trie.Node[info.Section], name string, writer *bufio.Writer) error {
-	if _, err := writer.WriteString(fmt.Sprintf(sectionTemplate, node.Data.Hash, name)); err != nil {
+func gen(node *trie.Node[info.TrieSection], name string, writer *bufio.Writer) error {
+	hash := hasher.ConvertToHex(node.Data.Section.GetHash())
+	filePath := filepath.Join(hash[:2], hash[2:])
+
+	if _, err := writer.WriteString(fmt.Sprintf(sectionTemplate, filePath, name)); err != nil {
 		return err
 	}
-	if _, err := writer.WriteString(fmt.Sprintf(ulOpenTemplate, node.Data.Hash)); err != nil {
+	if _, err := writer.WriteString(fmt.Sprintf(ulOpenTemplate, filePath)); err != nil {
 		return err
 	}
 
@@ -77,4 +82,14 @@ func gen(node *trie.Node[info.Section], name string, writer *bufio.Writer) error
 
 	_, err := writer.WriteString("</ul>")
 	return err
+}
+
+func FormDocumentation(docs, code []byte) []byte {
+	documentation := make([]byte, 0, len(docs)+len(code))
+
+	documentation = append(documentation, docs...)
+	documentation = append(documentation, '\n')
+	documentation = append(documentation, code...)
+
+	return documentation
 }

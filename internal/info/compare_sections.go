@@ -11,8 +11,7 @@ import (
 
 func CompareSectionsInOneFile(
 	ctx context.Context, newSections *trie.Node[Section], prevSections *trie.Node[Section],
-	rootNode *trie.Node[TrieSection],
-	rootPath string, sectionsStatuses *SectionsStatuses,
+	rootNode *trie.Node[TrieSection], rootPath string, sectionsStatuses *SectionsStatuses,
 ) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
@@ -32,8 +31,7 @@ func CompareSectionsInOneFile(
 
 func compareSectionsInOneFile(
 	ctx context.Context, newSections *trie.Node[Section], prevSections *trie.Node[Section],
-	curNode *trie.Node[TrieSection],
-	path string, sectionsStatuses *SectionsStatuses, wg *sync.WaitGroup,
+	curNode *trie.Node[TrieSection], path string, sectionsStatuses *SectionsStatuses, wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
@@ -41,13 +39,14 @@ func compareSectionsInOneFile(
 	}
 
 	newSectionInfo := newSections.Data
-	prevSectionInfo := prevSections.Data
 	curNode.Data.Section = newSectionInfo.This
 
-	status := StatusUnmodified
-	if !areSectionsEqual(newSectionInfo, prevSectionInfo) {
-		status = StatusModified
+	if prevSections == nil {
+		return
 	}
+	prevSectionInfo := prevSections.Data
+
+	status := compareTwoSections(newSectionInfo, prevSectionInfo)
 	curNode.Data.Status = status
 	sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
 

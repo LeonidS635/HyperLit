@@ -6,19 +6,16 @@ import (
 	"time"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
-	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
 type Section struct {
-	Path  string
-	Hash  string
-	MTime time.Time
+	Hash     string
+	CodeHash string
+	DocsHash string
 
-	Type int
-	This *tree.Tree
-	Code entry.Interface
-	Docs entry.Interface
+	MTime time.Time
+	This  *tree.Tree
 }
 
 type File struct {
@@ -31,10 +28,14 @@ type File struct {
 
 const (
 	StatusUnmodified = iota
-	StatusCreated
-	StatusDeleted
 	StatusProbablyModified
 	StatusModified
+
+	StatusDocsOutdated
+	StatusCodeOutdated
+
+	StatusCreated
+	StatusDeleted
 )
 
 type SectionStatus struct {
@@ -57,6 +58,11 @@ func newSectionsStatuses() *SectionsStatuses {
 	return &SectionsStatuses{
 		pathsByStatus: make(map[int][]SectionStatus),
 	}
+}
+
+func (s *SectionsStatuses) Check(statusCode int) bool {
+	_, ok := s.pathsByStatus[statusCode]
+	return ok
 }
 
 func (s *SectionsStatuses) Add(statusCode int, status SectionStatus) {
@@ -84,10 +90,22 @@ func (s *SectionsStatuses) Print() {
 	}
 }
 
-func areEqual(fileInfo File, sectionInfo Section) bool {
-	return fileInfo.MTime.Before(sectionInfo.MTime)
+func compareFileAndSection(fileInfo File, sectionInfo Section) int {
+	if fileInfo.MTime.Before(sectionInfo.MTime) {
+		return StatusUnmodified
+	}
+	return StatusProbablyModified
 }
 
-func areSectionsEqual(newS Section, prevS Section) bool {
-	return newS.Hash == prevS.Hash
+func compareTwoSections(newSectionInfo Section, prevSectionInfo Section) int {
+	if newSectionInfo.Hash == prevSectionInfo.Hash {
+		return StatusUnmodified
+	}
+	if newSectionInfo.DocsHash != prevSectionInfo.DocsHash && newSectionInfo.CodeHash != prevSectionInfo.CodeHash {
+		return StatusModified
+	}
+	if newSectionInfo.DocsHash == prevSectionInfo.DocsHash {
+		return StatusDocsOutdated
+	}
+	return StatusCodeOutdated
 }

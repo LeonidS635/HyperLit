@@ -30,7 +30,6 @@ func (s ObjectsStorage) saveData(hash string, data []byte) error {
 }
 
 func (s ObjectsStorage) SaveEntryTmp(entry entry.Interface) error {
-	fmt.Println("Saving", hasher.ConvertToHex(entry.GetHash()))
 	return s.saveDataTmp(hasher.ConvertToHex(entry.GetHash()), entry.GetData())
 }
 

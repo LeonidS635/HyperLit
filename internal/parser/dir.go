@@ -12,7 +12,6 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
-	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
@@ -74,13 +73,12 @@ func (p *Parser) parseDirSection(
 	helpers.SendCtx(ctx, p.sectionsCh, Section(section))
 
 	curNode.Data = info.Section{
-		Path:  path,
-		Hash:  hasher.ConvertToHex(section.GetHash()),
+		Hash:     hasher.ConvertToHex(section.GetHash()),
+		CodeHash: "",
+		DocsHash: "",
+
 		MTime: time.Now(),
-		Type:  format.TreeType,
 		This:  section,
-		Code:  nil,
-		Docs:  nil,
 	}
 }
 

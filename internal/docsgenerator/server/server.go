@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/LeonidS635/HyperLit/internal/docsgenerator/html"
 )
 
-func Start(port int, htmlFilePath string) error {
+func Start(port int, htmlFilePath string, parseFileFn func(hash string) ([]byte, []byte, error)) error {
 	if _, err := os.Stat(htmlFilePath); err != nil {
 		return err
 	}
@@ -16,12 +18,16 @@ func Start(port int, htmlFilePath string) error {
 			http.ServeFile(w, r, htmlFilePath)
 		},
 	)
-	http.HandleFunc("/open-file", openFileHandler)
+	http.HandleFunc(
+		"/open-file", func(w http.ResponseWriter, r *http.Request) {
+			openFileHandler(w, r, parseFileFn)
+		},
+	)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-func openFileHandler(w http.ResponseWriter, r *http.Request) {
+func openFileHandler(w http.ResponseWriter, r *http.Request, parseFileFn func(hash string) ([]byte, []byte, error)) {
 	fileName := r.URL.Query().Get("name")
 	if fileName == "" {
 		http.Error(w, "no file specified", http.StatusBadRequest)
@@ -29,12 +35,12 @@ func openFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(fileName)
-	content, err := os.ReadFile(fileName)
+	docs, code, err := parseFileFn(fileName)
 	if err != nil {
 		http.Error(w, "file not found", http.StatusNotFound)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write(content)
+	w.Write(html.FormDocumentation(docs, code))
 }

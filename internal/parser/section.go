@@ -12,7 +12,6 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/hasher"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/blob"
-	"github.com/LeonidS635/HyperLit/internal/vcs/objects/format"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
@@ -99,13 +98,12 @@ func (p *Parser) parseSection(
 	section.RegisterEntry(docsSection)
 
 	curNode.Data = info.Section{
-		Path:  "",
-		Hash:  hasher.ConvertToHex(section.GetHash()),
+		Hash:     hasher.ConvertToHex(section.GetHash()),
+		CodeHash: hasher.ConvertToHex(codeSection.GetHash()),
+		DocsHash: hasher.ConvertToHex(docsSection.GetHash()),
+
 		MTime: time.Now(),
-		Type:  format.TreeType,
 		This:  section,
-		Code:  codeSection,
-		Docs:  docsSection,
 	}
 
 	//docs := docsSection.GetData()
