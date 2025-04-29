@@ -111,3 +111,7 @@ func (t *Tree) GetHash() []byte {
 func (t *Tree) GetData() []byte {
 	return t.content
 }
+
+func (t *Tree) GetEntries() ([]entry.Entry, error) {
+	return Parse(t.content[format.HeaderSize:])
+}

@@ -35,10 +35,6 @@ func (h *HyperLit) getSectionsStatuses(ctx context.Context) error {
 		}
 	}()
 
-	fmt.Println("**********************************")
-	fmt.Println(rootHash)
-	fmt.Println("**********************************")
-
 	if rootHash != "" {
 		wg.Add(1)
 		go func() {
@@ -46,7 +42,6 @@ func (h *HyperLit) getSectionsStatuses(ctx context.Context) error {
 
 			sectionsRoot, sectionsErr = h.vcs.Read(statusCtx, rootHash)
 			if sectionsErr != nil {
-				fmt.Println("######################")
 				fmt.Println(sectionsErr)
 				statusCtxCancel()
 			}

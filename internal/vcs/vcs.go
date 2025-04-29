@@ -34,9 +34,7 @@ func (v VCS) Init() error {
 }
 
 func (v VCS) SaveNewEntry(ctx context.Context, entry entry.Interface) error {
-	err := v.storage.SaveNewEntry(entry)
-	fmt.Println(err)
-	return err
+	return v.storage.SaveNewEntry(entry)
 }
 
 func (v VCS) SaveOldEntry(ctx context.Context, entry entry.Interface) error {

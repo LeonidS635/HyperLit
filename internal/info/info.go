@@ -91,15 +91,6 @@ func (s *SectionsStatuses) Print() {
 }
 
 func compareFileAndSection(fileInfo File, sectionInfo Section) int {
-	var emptyFile File
-	var emptySection Section
-
-	if fileInfo == emptyFile {
-		return StatusDeleted
-	}
-	if sectionInfo == emptySection {
-		return StatusCreated
-	}
 	if fileInfo.MTime.Before(sectionInfo.MTime) {
 		return StatusUnmodified
 	}
@@ -113,8 +104,11 @@ func compareTwoSections(newSectionInfo Section, prevSectionInfo Section) int {
 	if newSectionInfo.DocsHash != prevSectionInfo.DocsHash && newSectionInfo.CodeHash != prevSectionInfo.CodeHash {
 		return StatusModified
 	}
-	if newSectionInfo.DocsHash == prevSectionInfo.DocsHash {
+	if newSectionInfo.DocsHash == prevSectionInfo.DocsHash && newSectionInfo.CodeHash != prevSectionInfo.CodeHash {
 		return StatusDocsOutdated
 	}
-	return StatusCodeOutdated
+	if newSectionInfo.CodeHash == prevSectionInfo.CodeHash && newSectionInfo.DocsHash != prevSectionInfo.DocsHash {
+		return StatusCodeOutdated
+	}
+	return StatusUnmodified
 }
