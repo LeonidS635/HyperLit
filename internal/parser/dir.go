@@ -70,7 +70,7 @@ func (p *Parser) parseDirSection(
 	case <-done:
 	}
 
-	helpers.SendCtx(ctx, p.sectionsCh, Section(section))
+	//helpers.SendCtx(ctx, p.sectionsCh, Section(section))
 
 	curNode.Data = info.Section{
 		Hash:     hasher.ConvertToHex(section.GetHash()),

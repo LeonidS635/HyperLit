@@ -34,7 +34,6 @@ func openFileHandler(w http.ResponseWriter, r *http.Request, parseFileFn func(ha
 		return
 	}
 
-	fmt.Println(fileName)
 	docs, code, err := parseFileFn(fileName)
 	if err != nil {
 		http.Error(w, "file not found", http.StatusNotFound)

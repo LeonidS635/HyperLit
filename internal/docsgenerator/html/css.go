@@ -3,47 +3,70 @@ package html
 const css = `<style>
 	body {
 		margin: 0;
-		font-family: Arial, sans-serif;
+		font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+		background-color: #f9f9f9;
+		color: #333;
 	}
+
 	.container {
 		display: flex;
 		height: 100vh;
 	}
+
 	.tree {
-		width: 33%;
-		padding-right: 20px;
+		width: 30%;
+		max-width: 300px;
+		min-width: 200px;
+		padding: 20px;
+		background-color: #f0f0f0;
 		border-right: 2px solid #ccc;
-		overflow-x: auto;
 		overflow-y: auto;
 	}
+
 	.content {
-		width: 67%;
-		padding-left: 20px;
+		flex-grow: 1;
+		padding: 20px;
 		overflow-y: auto;
+		background-color: #fff;
 	}
-	.folder, .file {
+
+	.folder {
+		font-weight: bold;
 		margin-top: 5px;
 		cursor: pointer;
 		display: block;
+		color: #2c3e50;
 	}
-	.folder {
-		font-weight: bold;
-	}
-	.file {
-		font-weight: normal;
-	}
+
 	ul {
 		list-style-type: none;
-		padding-left: 0;
+		padding-left: 10px;
 	}
+
 	.hidden {
 		display: none;
 	}
-	.folder-description, .file-description {
-		margin-top: 20px;
-		color: #555;
-	}
+
 	.nested {
-		margin-left: 20px; /* Каждый уровень вложенности увеличивает отступ */
+		margin-left: 10px;
+	}
+
+	h1 {
+		font-size: 1.5em;
+		margin-bottom: 10px;
+	}
+
+	pre {
+		background-color: #f4f4f4;
+		padding: 15px;
+		border-radius: 8px;
+		overflow-x: auto;
+		white-space: pre-wrap;
+		word-break: break-word;
+		box-shadow: 0 0 10px rgba(0,0,0,0.05);
+	}
+
+	p {
+		font-size: 1rem;
 	}
 </style>`

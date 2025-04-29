@@ -13,11 +13,3 @@ func (s ObjectsStorage) Traverse(ctx context.Context, rootHash string) (*trie.No
 	go t.Traverse(ctx, rootHash)
 	return t.GetOutputs()
 }
-
-func (s ObjectsStorage) TraverseWithoutReadingBlobs(ctx context.Context, rootHash string) (
-	*trie.Node[info.Section], <-chan error,
-) {
-	t := hashtraverser.NewHashTraverser(s.LoadEntry)
-	go t.Traverse(ctx, rootHash)
-	return t.GetOutputs()
-}

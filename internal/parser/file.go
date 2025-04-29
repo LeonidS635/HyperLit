@@ -31,7 +31,7 @@ func (p *Parser) parseFile(
 	defer file.Close()
 
 	lineNumber := 0
-	if err = p.parseSection(ctx, bufio.NewScanner(file), &lineNumber, fileSection, fileNode); err != nil {
+	if err = p.parseSection(ctx, bufio.NewScanner(file), &lineNumber, 0, fileSection, fileNode); err != nil {
 		helpers.SendCtx(ctx, p.errCh, fmt.Errorf("error parsing %s: %w", path, err))
 	}
 }

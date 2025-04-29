@@ -1,8 +1,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"context"
 
 	"github.com/LeonidS635/HyperLit/internal/app/hyperlit"
 	"github.com/spf13/cobra"
@@ -13,11 +12,8 @@ var rootCmd = &cobra.Command{
 	Short: "HyperLit CLI tool",
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+func Execute(ctx context.Context) error {
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func InitCmds(hl *hyperlit.HyperLit) {

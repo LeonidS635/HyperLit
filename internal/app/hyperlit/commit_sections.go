@@ -27,7 +27,19 @@ func (h *HyperLit) commitSections(ctx context.Context) error {
 	modifiedSections := h.sectionsStatuses.Get(info.StatusProbablyModified)
 	modifiedSections = append(modifiedSections, h.sectionsStatuses.Get(info.StatusCreated)...)
 
+	h.sectionsStatuses.Remove(info.StatusProbablyModified)
+	h.sectionsStatuses.Remove(info.StatusCreated)
+
 	wg := &sync.WaitGroup{}
+	for _, sectionStatus := range h.sectionsStatuses.Get(info.StatusUnmodified) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			info.FormProjectTree(ctx, sectionStatus.Trie, sectionStatus.FullTrieNode)
+		}()
+	}
+
 	for _, sectionStatus := range modifiedSections {
 		wg.Add(1)
 		go func() {

@@ -15,8 +15,22 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
+func countLeadingSpaces(str []byte, tabWidth int) int {
+	count := 0
+	for _, ch := range str {
+		if ch == ' ' {
+			count++
+		} else if ch == '\t' {
+			count += tabWidth
+		} else {
+			break
+		}
+	}
+	return count
+}
+
 func (p *Parser) parseSection(
-	ctx context.Context, fileScanner *bufio.Scanner, lineNumber *int, section *tree.Tree,
+	ctx context.Context, fileScanner *bufio.Scanner, lineNumber *int, sectionOffset int, section *tree.Tree,
 	curNode *trie.Node[info.Section],
 ) error {
 	if helpers.IsCtxCancelled(ctx) {
@@ -37,6 +51,11 @@ func (p *Parser) parseSection(
 		line := fileScanner.Bytes()
 		*lineNumber++
 
+		lineOffset := countLeadingSpaces(line, 4)
+		if len(bytes.TrimSpace(line)) == 0 {
+			lineOffset = sectionOffset
+		}
+
 		if docsStartOffset := bytes.Index(line, p.syntax.DocsStartSeq); docsStartOffset != -1 {
 			//if lineWithoutSpaces := bytes.TrimSpace(line[:docsStartOffset]); len(lineWithoutSpaces) > 0 {
 			//	return nil, fmt.Errorf("line %d: %w", *lineNumber, ErrNewLineCmd)
@@ -49,7 +68,7 @@ func (p *Parser) parseSection(
 			}
 			nextNode := curNode.Insert(name)
 
-			if err = p.parseSection(ctx, fileScanner, lineNumber, subSection, nextNode); err != nil {
+			if err = p.parseSection(ctx, fileScanner, lineNumber, lineOffset, subSection, nextNode); err != nil {
 				return err
 			}
 			if err = section.RegisterEntry(subSection); err != nil {
@@ -74,6 +93,9 @@ func (p *Parser) parseSection(
 			if isDocsSection {
 				return fmt.Errorf("line %d: %s", *lineNumber, "ErrUnopenedSection")
 			}
+			break
+
+		} else if lineOffset < sectionOffset {
 			break
 
 		} else {
@@ -125,12 +147,12 @@ func (p *Parser) parseSection(
 	case p.sectionsCh <- docsSection:
 		// ok
 	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case p.sectionsCh <- section:
-		// ok
-	}
+	//select {
+	//case <-ctx.Done():
+	//	return nil
+	//case p.sectionsCh <- section:
+	//	// ok
+	//}
 
 	return nil
 }

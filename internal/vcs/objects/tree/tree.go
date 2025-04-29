@@ -72,6 +72,26 @@ func (t *Tree) RegisterEntry(child entry.Interface) error {
 	return format.PutSizeInHeader(t.content[:format.HeaderSize], len(t.content)-format.HeaderSize)
 }
 
+func (t *Tree) Clear(name string) (*Tree, error) {
+	newTree, err := Prepare(name)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := Parse(t.content)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		if e.Type == format.DocsType || e.Type == format.CodeType {
+			if err = newTree.RegisterEntry(e); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return newTree, nil
+}
+
 func (t *Tree) GetType() byte {
 	return format.TreeType
 }

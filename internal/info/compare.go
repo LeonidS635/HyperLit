@@ -79,12 +79,12 @@ func compare(
 	}
 
 	for name, section := range childrenSections {
-		filePath := filepath.Join(path, name)
 		if _, ok := seen[name]; !ok {
 			nextNode := curNode.Insert(name)
-			nextNode.Data.Section = section.Data.This
-			nextNode.Data.Status = StatusCreated
-			sectionsStatuses.Add(StatusDeleted, SectionStatus{Path: filePath, Trie: nil, FullTrieNode: nextNode})
+			nextNode.Data.Status = StatusDeleted
+			sectionsStatuses.Add(
+				StatusDeleted, SectionStatus{Path: filepath.Join(path, name), Trie: section, FullTrieNode: nextNode},
+			)
 		}
 	}
 }

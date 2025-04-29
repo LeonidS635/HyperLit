@@ -33,12 +33,14 @@ func (v VCS) Init() error {
 	return nil
 }
 
-func (v VCS) LoadEntry(ctx context.Context, hash string) (entry.Entry, error) {
-	return v.storage.LoadEntry(hash)
+func (v VCS) SaveNewEntry(ctx context.Context, entry entry.Interface) error {
+	err := v.storage.SaveNewEntry(entry)
+	fmt.Println(err)
+	return err
 }
 
-func (v VCS) SaveEntry(ctx context.Context, entry entry.Interface) error {
-	return v.storage.SaveEntryTmp(entry)
+func (v VCS) SaveOldEntry(ctx context.Context, entry entry.Interface) error {
+	return v.storage.SaveOldEntry(entry)
 }
 
 func (v VCS) Delete(ctx context.Context, hash string) error {
@@ -96,7 +98,7 @@ func (v VCS) Save(ctx context.Context, sectionsCh <-chan entry.Interface) error 
 				return nil
 			}
 
-			if err := v.storage.SaveEntryTmp(section); err != nil {
+			if err := v.storage.SaveNewEntry(section); err != nil {
 				return err
 			}
 		}
@@ -111,7 +113,7 @@ func (v VCS) Read(ctx context.Context, rootHash string) (*trie.Node[info.Section
 
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, nil
 	case err, ok := <-errCh:
 		if ok {
 			return nil, err
@@ -126,4 +128,8 @@ func (v VCS) SaveRootHash(hash []byte) error {
 
 func (v VCS) GetRootHash() (string, error) {
 	return v.rootHash.Get()
+}
+
+func (v VCS) Clear() error {
+	return v.storage.Clear()
 }

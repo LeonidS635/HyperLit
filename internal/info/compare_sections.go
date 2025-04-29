@@ -38,43 +38,50 @@ func compareSectionsInOneFile(
 		return
 	}
 
-	newSectionInfo := newSections.Data
-	curNode.Data.Section = newSectionInfo.This
+	var newSectionInfo, prevSectionInfo Section
+	var newSectionChildren, prevSectionChildren map[string]*trie.Node[Section]
 
 	if prevSections == nil {
-		return
+		curNode.Data.Status = StatusCreated
+		sectionsStatuses.Add(StatusCreated, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
+	} else {
+		prevSectionInfo = prevSections.Data
+		prevSectionChildren = prevSections.GetAll()
 	}
-	prevSectionInfo := prevSections.Data
 
-	status := compareTwoSections(newSectionInfo, prevSectionInfo)
-	curNode.Data.Status = status
-	sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
+	if newSections == nil {
+		curNode.Data.Status = StatusDeleted
+		sectionsStatuses.Add(StatusDeleted, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
+	} else {
+		newSectionInfo = newSections.Data
+		newSectionChildren = newSections.GetAll()
+		curNode.Data.Section = newSectionInfo.This
+	}
 
-	newChildrenSections := newSections.GetAll()
-	prevChildrenSections := prevSections.GetAll()
+	if prevSections != nil && newSections != nil {
+		status := compareTwoSections(newSectionInfo, prevSectionInfo)
+		curNode.Data.Status = status
+		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
+	}
 
 	seen := make(map[string]struct{})
-	for name, newS := range newChildrenSections {
+	for name, newS := range newSectionChildren {
 		sectionPath := filepath.Join(path, name)
 		nextNode := curNode.Insert(name)
 
-		if prevS, ok := prevChildrenSections[name]; ok {
-			wg.Add(1)
-			go compareSectionsInOneFile(ctx, newS, prevS, nextNode, sectionPath, sectionsStatuses, wg)
-		} else {
-			nextNode.Data.Status = StatusCreated
-			sectionsStatuses.Add(StatusCreated, SectionStatus{Path: sectionPath, Trie: nil, FullTrieNode: nextNode})
-		}
+		wg.Add(1)
+		go compareSectionsInOneFile(ctx, newS, prevSectionChildren[name], nextNode, sectionPath, sectionsStatuses, wg)
+
 		seen[name] = struct{}{}
 	}
 
-	for name, prevS := range prevChildrenSections {
-		sectionPath := filepath.Join(path, name)
+	for name, prevS := range prevSectionChildren {
 		if _, ok := seen[name]; !ok {
+			sectionPath := filepath.Join(path, name)
 			nextNode := curNode.Insert(name)
-			nextNode.Data.Status = StatusDeleted
-			nextNode.Data.Section = prevS.Data.This
-			sectionsStatuses.Add(StatusDeleted, SectionStatus{Path: sectionPath, Trie: nil, FullTrieNode: nextNode})
+
+			wg.Add(1)
+			go compareSectionsInOneFile(ctx, nil, prevS, nextNode, sectionPath, sectionsStatuses, wg)
 		}
 	}
 }

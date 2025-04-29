@@ -15,7 +15,8 @@ const script = `<script>
         fetch("/open-file?name=" + encodeURIComponent(fileName))
             .then(response => {
                 if (!response.ok) {
-                    throw new Error("Файл не найден или ошибка сервера");
+					const errorText = response.text();
+                    throw new Error(errorText || "Файл не найден или ошибка сервера");
                 }
                 return response.text();
             })
@@ -25,10 +26,5 @@ const script = `<script>
             .catch(error => {
                 document.getElementById('content').innerHTML = "<p>Ошибка: " + error.message + "</p>";
             });
-    }
-
-
-    function openFolder(folderName) {
-        document.getElementById('content').innerHTML = "<h1>Документация для ${folderName}</h1><p>Заглушка: Документация для ${folderName} будет здесь.</p>";
     }
 </script>`

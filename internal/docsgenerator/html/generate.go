@@ -44,7 +44,7 @@ func Generate(htmlFilePath string, rootNode *trie.Node[info.TrieSection], rootNa
 	if err = gen(rootNode, rootName, writer); err != nil {
 		return err
 	}
-	if _, err = writer.WriteString("</li></ul></div><div class=container><div class=\"content\" id=\"content\">\n        <h1>Заглушка</h1>\n        <p>Выберите файл или папку в левой части, чтобы увидеть его документацию или содержимое.</p>\n    </div></div></div>"); err != nil {
+	if _, err = writer.WriteString("</li></ul></div>" + helloPage + "</div>"); err != nil {
 		return err
 	}
 	if _, err = writer.WriteString(script); err != nil {
@@ -58,6 +58,10 @@ func Generate(htmlFilePath string, rootNode *trie.Node[info.TrieSection], rootNa
 }
 
 func gen(node *trie.Node[info.TrieSection], name string, writer *bufio.Writer) error {
+	if node.Data.Status == info.StatusDeleted {
+		return nil
+	}
+
 	hash := hasher.ConvertToHex(node.Data.Section.GetHash())
 	filePath := filepath.Join(hash[:2], hash[2:])
 
@@ -89,7 +93,9 @@ func FormDocumentation(docs, code []byte) []byte {
 
 	documentation = append(documentation, docs...)
 	documentation = append(documentation, '\n')
+	documentation = append(documentation, "<details><summary>Показать код</summary><pre><code>"...)
 	documentation = append(documentation, code...)
+	documentation = append(documentation, "</code></pre></details>"...)
 
 	return documentation
 }

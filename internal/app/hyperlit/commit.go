@@ -35,6 +35,8 @@ func (h *HyperLit) CommitSecondStep(ctx context.Context) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
 
-	h.removeUnused()
+func (h *HyperLit) Clear() error {
+	return h.vcs.Clear()
 }
