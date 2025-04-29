@@ -61,6 +61,11 @@ func compareSectionsInOneFile(
 	if prevSections != nil && newSections != nil {
 		status := compareTwoSections(newSectionInfo, prevSectionInfo)
 		curNode.Data.Status = status
+		if status == StatusUnmodified {
+			curNode.Data.Section = prevSectionInfo.This
+		} else {
+			curNode.Data.Section = newSectionInfo.This
+		}
 		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
 	}
 
