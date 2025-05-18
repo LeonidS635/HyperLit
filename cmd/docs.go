@@ -9,8 +9,8 @@ func docsCmd(hl *hyperlit.HyperLit) *cobra.Command {
 	return &cobra.Command{
 		Use:   "docs",
 		Short: "Generate documentation",
-		Run: func(cmd *cobra.Command, args []string) {
-			hl.Docs(cmd.Context())
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return hl.Docs(cmd.Context())
 		},
 	}
 }

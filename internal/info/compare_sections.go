@@ -2,91 +2,62 @@ package info
 
 import (
 	"context"
-	"path/filepath"
 	"sync"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 )
 
-func CompareSectionsInOneFile(
-	ctx context.Context, newSections *trie.Node[Section], prevSections *trie.Node[Section],
-	rootNode *trie.Node[TrieSection], rootPath string, sectionsStatuses *SectionsStatuses,
-) {
+func CompareSectionsTries(
+	ctx context.Context, newSectionsTrieNode *trie.Node[Section], oldSectionsTrieNode *trie.Node[Section],
+	sectionsStates *SectionsStates,
+) (*trie.Node[Section], error) {
+	// newSectionsTrieNode sections can't be nil
+	if oldSectionsTrieNode == nil {
+		propagateStatus(ctx, StatusCreated, newSectionsTrieNode, sectionsStates)
+		return newSectionsTrieNode, nil
+	}
+
 	var wg sync.WaitGroup
-	done := make(chan struct{})
 
 	wg.Add(1)
-	go compareSectionsInOneFile(ctx, newSections, prevSections, rootNode, rootPath, sectionsStatuses, &wg)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	go compareSectionsTries(ctx, newSectionsTrieNode, oldSectionsTrieNode, sectionsStates, &wg)
 
-	select {
-	case <-ctx.Done():
-	case <-done:
-	}
+	_ = helpers.WaitCtx(ctx, &wg, nil)
+	return newSectionsTrieNode, ctx.Err()
 }
 
-func compareSectionsInOneFile(
-	ctx context.Context, newSections *trie.Node[Section], prevSections *trie.Node[Section],
-	curNode *trie.Node[TrieSection], path string, sectionsStatuses *SectionsStatuses, wg *sync.WaitGroup,
+func compareSectionsTries(
+	ctx context.Context, newSectionsTrieNode *trie.Node[Section], oldSectionsTrieNode *trie.Node[Section],
+	sectionsStates *SectionsStates, wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
 	}
 
-	var newSectionInfo, prevSectionInfo Section
-	var newSectionChildren, prevSectionChildren map[string]*trie.Node[Section]
+	status := compareTwoSections(newSectionsTrieNode.Data, oldSectionsTrieNode.Data)
+	newSectionsTrieNode.Data.Status = status
+	sectionsStates.Add(status, newSectionsTrieNode.Data.Path, newSectionsTrieNode, nil)
 
-	if prevSections == nil {
-		curNode.Data.Status = StatusCreated
-		sectionsStatuses.Add(StatusCreated, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
-	} else {
-		prevSectionInfo = prevSections.Data
-		prevSectionChildren = prevSections.GetAll()
-	}
-
-	if newSections == nil {
-		curNode.Data.Status = StatusDeleted
-		sectionsStatuses.Add(StatusDeleted, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
-	} else {
-		newSectionInfo = newSections.Data
-		newSectionChildren = newSections.GetAll()
-		curNode.Data.Section = newSectionInfo.This
-	}
-
-	if prevSections != nil && newSections != nil {
-		status := compareTwoSections(newSectionInfo, prevSectionInfo)
-		curNode.Data.Status = status
-		if status == StatusUnmodified {
-			curNode.Data.Section = prevSectionInfo.This
-		} else {
-			curNode.Data.Section = newSectionInfo.This
-		}
-		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: prevSections, FullTrieNode: curNode})
-	}
+	newSectionChildren, oldSectionChildren := newSectionsTrieNode.GetAll(), oldSectionsTrieNode.GetAll()
 
 	seen := make(map[string]struct{})
-	for name, newS := range newSectionChildren {
-		sectionPath := filepath.Join(path, name)
-		nextNode := curNode.Insert(name)
-
-		wg.Add(1)
-		go compareSectionsInOneFile(ctx, newS, prevSectionChildren[name], nextNode, sectionPath, sectionsStatuses, wg)
-
+	for name, newChild := range newSectionChildren {
+		if oldChild, ok := oldSectionChildren[name]; ok {
+			wg.Add(1)
+			go compareSectionsTries(ctx, newChild, oldChild, sectionsStates, wg)
+		} else {
+			propagateStatus(ctx, StatusCreated, newChild, sectionsStates)
+		}
 		seen[name] = struct{}{}
 	}
 
-	for name, prevS := range prevSectionChildren {
+	for name, oldChild := range oldSectionChildren {
 		if _, ok := seen[name]; !ok {
-			sectionPath := filepath.Join(path, name)
-			nextNode := curNode.Insert(name)
-
-			wg.Add(1)
-			go compareSectionsInOneFile(ctx, nil, prevS, nextNode, sectionPath, sectionsStatuses, wg)
+			nextNode := newSectionsTrieNode.Insert(name)
+			nextNode.Data.Path = oldChild.Data.Path
+			propagateStatus(ctx, StatusDeleted, nextNode, sectionsStates)
 		}
 	}
 }

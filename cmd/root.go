@@ -17,7 +17,6 @@ func Execute(ctx context.Context) error {
 }
 
 func InitCmds(hl *hyperlit.HyperLit) {
-	rootCmd.AddCommand(initCmd(hl))
 	rootCmd.AddCommand(commitCmd(hl))
 	rootCmd.AddCommand(docsCmd(hl))
 }

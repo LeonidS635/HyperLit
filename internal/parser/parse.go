@@ -10,26 +10,28 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-func (p *Parser) Parse(ctx context.Context, path string) ([]byte, *trie.Node[info.Section]) {
+func (p *Parser) parse(ctx context.Context, path string) (*trie.Node[info.Section], error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		helpers.SendCtx(ctx, p.errCh, err)
-		return nil, nil
+		return nil, err
 	}
 
 	section, err := tree.Prepare(fileInfo.Name())
 	if err != nil {
-		helpers.SendCtx(ctx, p.errCh, err)
-		return nil, nil
+		return nil, err
 	}
-	rootNode := trie.NewNode[info.Section]()
+	sectionsTrieRootNode := trie.NewNode[info.Section]()
 
 	if fileInfo.IsDir() {
-		p.parseDir(ctx, path, section, rootNode)
+		p.wg.Add(1)
+		p.parseDir(ctx, path, section, sectionsTrieRootNode)
 	} else {
 		p.wg.Add(1)
-		p.parseFile(ctx, path, section, rootNode)
+		p.parseFile(ctx, path, section, sectionsTrieRootNode)
 	}
 
-	return section.GetHash(), rootNode
+	if err = helpers.WaitCtx(ctx, &p.wg, p.errCh); err != nil {
+		return nil, err
+	}
+	return sectionsTrieRootNode, nil
 }

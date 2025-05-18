@@ -15,14 +15,8 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-func (p *Parser) parseDir(ctx context.Context, path string, rootSection *tree.Tree, rootNode *trie.Node[info.Section]) {
-	p.wg.Add(1)
-	go p.parseDirSection(ctx, path, rootSection, rootNode)
-	p.wg.Wait()
-}
-
-func (p *Parser) parseDirSection(
-	ctx context.Context, path string, section *tree.Tree, curNode *trie.Node[info.Section],
+func (p *Parser) parseDir(
+	ctx context.Context, path string, section *tree.Tree, sectionsTrieNode *trie.Node[info.Section],
 ) {
 	defer p.wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
@@ -30,24 +24,32 @@ func (p *Parser) parseDirSection(
 	}
 
 	sectionWg := sync.WaitGroup{}
-	done := make(chan struct{})
-
 	for _, file := range getDirEntries(ctx, path, p.sema, p.errCh) {
 		filePath := filepath.Join(path, file.Name())
+
+		match := false
+		for _, glob := range p.ignoreGlobs {
+			if match, _ = filepath.Match(glob, filePath); match {
+				break
+			}
+		}
+		if match {
+			continue
+		}
 
 		subSection, err := tree.Prepare(file.Name())
 		if err != nil {
 			helpers.SendCtx(ctx, p.errCh, err)
 			return
 		}
-		nextNode := curNode.Insert(file.Name())
+		nextNode := sectionsTrieNode.Insert(file.Name())
 
 		sectionWg.Add(1)
 		if file.IsDir() {
 			p.wg.Add(1)
 			go func() {
 				defer sectionWg.Done()
-				p.parseDirSection(ctx, filePath, subSection, nextNode)
+				p.parseDir(ctx, filePath, subSection, nextNode)
 				section.RegisterEntry(subSection)
 			}()
 		} else {
@@ -59,23 +61,13 @@ func (p *Parser) parseDirSection(
 			}()
 		}
 	}
-	go func() {
-		sectionWg.Wait()
-		close(done)
-	}()
 
-	select {
-	case <-ctx.Done():
-		return
-	case <-done:
-	}
+	_ = helpers.WaitCtx(ctx, &sectionWg, nil)
 
-	//helpers.SendCtx(ctx, p.sectionsCh, Section(section))
-
-	curNode.Data = info.Section{
-		Hash:     hasher.ConvertToHex(section.GetHash()),
-		CodeHash: "",
-		DocsHash: "",
+	// Fill data in a global sections tree
+	sectionsTrieNode.Data = info.Section{
+		Path: path,
+		Hash: hasher.ConvertToHex(section.GetHash()),
 
 		MTime: time.Now(),
 		This:  section,

@@ -9,75 +9,42 @@ import (
 )
 
 func (h *HyperLit) commitSections(ctx context.Context) error {
-	saveCtx, saveCtxCancel := context.WithCancel(ctx)
-	defer saveCtxCancel()
+	commitCtx, commitCtxCancel := context.WithCancel(ctx)
+	defer commitCtxCancel()
 
-	sectionsCh, sectionErrCh := h.parser.InitChannels()
-	done, errCh := make(chan struct{}), make(chan error)
+	errCh := make(chan error)
 
-	go func() {
-		defer close(done)
+	var wg sync.WaitGroup
 
-		if err := h.vcs.Save(saveCtx, sectionsCh); err != nil {
-			helpers.SendCtx(saveCtx, errCh, err)
-		}
-		saveCtxCancel()
-	}()
+	parseAndCompareModifiedSections := func(status int) {
+		states := h.sectionsStates.Get(status)
+		h.sectionsStates.Remove(status)
 
-	modifiedSections := h.sectionsStatuses.Get(info.StatusProbablyModified)
-	modifiedSections = append(modifiedSections, h.sectionsStatuses.Get(info.StatusCreated)...)
+		for _, sectionState := range states {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-	h.sectionsStatuses.Remove(info.StatusProbablyModified)
-	h.sectionsStatuses.Remove(info.StatusCreated)
-
-	wg := &sync.WaitGroup{}
-	for _, sectionStatus := range h.sectionsStatuses.Get(info.StatusUnmodified) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			info.FormProjectTree(ctx, sectionStatus.Trie, sectionStatus.FullTrieNode)
-		}()
-	}
-
-	for _, sectionStatus := range modifiedSections {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			rootHash, rootNode := h.parser.Parse(saveCtx, sectionStatus.Path)
-			if rootHash != nil && sectionStatus.Path == h.projectPath {
-				if err := h.vcs.SaveRootHash(rootHash); err != nil {
-					helpers.SendCtx(saveCtx, errCh, err)
-					saveCtxCancel()
+				newSectionsTrie, err := h.parser.HandleParsedSections(commitCtx, sectionState.Path, h.vcs.SaveNewEntry)
+				if err != nil {
+					helpers.SendCtx(commitCtx, errCh, err)
+					return
 				}
-			}
-			if rootNode != nil {
-				info.CompareSectionsInOneFile(
-					ctx, rootNode, sectionStatus.Trie, sectionStatus.FullTrieNode, sectionStatus.Path,
-					h.sectionsStatuses,
+
+				updatedSectionsTrie, err := info.CompareSectionsTries(
+					ctx, newSectionsTrie, sectionState.CurTrie, h.sectionsStates,
 				)
-			}
-		}()
-	}
-
-	go func() {
-		wg.Wait()
-		h.parser.CloseChannels()
-	}()
-
-	select {
-	case <-ctx.Done():
-	case <-done:
-	case err, ok := <-errCh:
-		if ok {
-			return err
-		}
-	case err, ok := <-sectionErrCh:
-		if ok {
-			return err
+				if err != nil {
+					helpers.SendCtx(commitCtx, errCh, err)
+					return
+				}
+				sectionState.ProjectTrieNode.Replace(updatedSectionsTrie)
+			}()
 		}
 	}
 
-	return nil
+	parseAndCompareModifiedSections(info.StatusProbablyModified)
+	parseAndCompareModifiedSections(info.StatusCreated)
+
+	return helpers.WaitCtx(ctx, &wg, errCh)
 }

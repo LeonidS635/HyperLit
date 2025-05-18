@@ -2,64 +2,60 @@ package hyperlit
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
+	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
 )
 
 func (h *HyperLit) getSectionsStatuses(ctx context.Context) error {
+	// Get saved root hash
 	rootHash, err := h.vcs.GetRootHash()
 	if err != nil {
 		return err
 	}
 
-	var filesRoot *trie.Node[info.File]
-	var sectionsRoot *trie.Node[info.Section]
-	var filesErr, sectionsErr error
-
-	wg := sync.WaitGroup{}
-	done := make(chan struct{})
-
 	statusCtx, statusCtxCancel := context.WithCancel(ctx)
 	defer statusCtxCancel()
 
+	var filesTrie *trie.Node[info.File]
+	var sectionsTrie *trie.Node[info.Section]
+
+	var wg sync.WaitGroup
+	errCh := make(chan error)
+
+	// Traverse project files
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		filesRoot, filesErr = h.parser.Traverse(statusCtx, h.projectPath)
-		if filesErr != nil {
-			fmt.Println(filesErr)
-			statusCtxCancel()
+
+		var err error
+		filesTrie, err = h.parser.Traverse(statusCtx, h.projectPath)
+		if err != nil {
+			helpers.SendCtx(statusCtx, errCh, err)
 		}
 	}()
 
+	// Traverse saved sections
 	if rootHash != "" {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			sectionsRoot, sectionsErr = h.vcs.Read(statusCtx, rootHash)
-			if sectionsErr != nil {
-				fmt.Println(sectionsErr)
-				statusCtxCancel()
+			var err error
+			sectionsTrie, err = h.vcs.Read(statusCtx, rootHash)
+			if err != nil {
+				helpers.SendCtx(statusCtx, errCh, err)
 			}
 		}()
 	}
 
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-done:
+	if err = helpers.WaitCtx(statusCtx, &wg, errCh); err != nil {
+		return err
 	}
 
-	h.sectionsStatuses = info.Compare(ctx, filesRoot, sectionsRoot, h.rootSection, h.projectPath)
-
-	return nil
+	// Start building full project sections trie
+	h.projectTrie, err = info.Compare(statusCtx, filesTrie, sectionsTrie, h.sectionsStates)
+	return err
 }

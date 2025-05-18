@@ -5,4 +5,5 @@ type Interface interface {
 	GetName() string
 	GetHash() []byte
 	GetData() []byte
+	GetContent() []byte
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/docsgenerator/html"
 )
 
-func Start(port int, htmlFilePath string, parseFileFn func(hash string) ([]byte, []byte, error)) error {
+func Start(port int, htmlFilePath string, getDataByHash func(hash string) ([]byte, error)) error {
 	if _, err := os.Stat(htmlFilePath); err != nil {
 		return err
 	}
@@ -19,25 +19,34 @@ func Start(port int, htmlFilePath string, parseFileFn func(hash string) ([]byte,
 		},
 	)
 	http.HandleFunc(
-		"/open-file", func(w http.ResponseWriter, r *http.Request) {
-			openFileHandler(w, r, parseFileFn)
+		"/gen", func(w http.ResponseWriter, r *http.Request) {
+			openFileHandler(w, r, getDataByHash)
 		},
 	)
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-func openFileHandler(w http.ResponseWriter, r *http.Request, parseFileFn func(hash string) ([]byte, []byte, error)) {
-	fileName := r.URL.Query().Get("name")
-	if fileName == "" {
-		http.Error(w, "no file specified", http.StatusBadRequest)
-		return
-	}
+func openFileHandler(w http.ResponseWriter, r *http.Request, getDataByHashFn func(hash string) ([]byte, error)) {
+	codeHash := r.URL.Query().Get("code")
+	docsHash := r.URL.Query().Get("docs")
 
-	docs, code, err := parseFileFn(fileName)
-	if err != nil {
-		http.Error(w, "file not found", http.StatusNotFound)
-		return
+	var code, docs []byte
+	var err error
+
+	if codeHash != "" {
+		code, err = getDataByHashFn(codeHash)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("code file %s not found", codeHash), http.StatusNotFound)
+			return
+		}
+	}
+	if docsHash != "" {
+		docs, err = getDataByHashFn(docsHash)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("docs file %s not found", docsHash), http.StatusNotFound)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

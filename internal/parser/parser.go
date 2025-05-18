@@ -4,46 +4,36 @@ import (
 	"sync"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers/resourceslimiter"
+	"github.com/LeonidS635/HyperLit/internal/parser/globs"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
 )
 
-type Syntax struct {
-	DocsStartSeq []byte
-	DocsEndSeq   []byte
-	CodeEndSeq   []byte
-}
-
-type Section = entry.Interface
-
 type Parser struct {
-	syntax Syntax
+	ignoreGlobs []string
 
 	sema *resourceslimiter.Semaphore
-	wg   *sync.WaitGroup
+	wg   sync.WaitGroup
 
-	sectionsCh chan Section
-	errCh      chan error
+	entriesCh chan entry.Interface
+	errCh     chan error
 }
 
-func NewParser() *Parser {
-	return &Parser{
-		syntax: Syntax{
-			DocsStartSeq: []byte("@@docs"),
-			DocsEndSeq:   []byte("@@/docs"),
-			CodeEndSeq:   []byte("@@/code"),
-		},
-		sema: resourceslimiter.NewSemaphore(),
-		wg:   &sync.WaitGroup{},
+func NewParser(projectPath, hlPath string) *Parser {
+	p := &Parser{
+		ignoreGlobs: globs.GetGlobsToIgnore(projectPath),
+		sema:        resourceslimiter.NewSemaphore(),
+		wg:          sync.WaitGroup{},
 	}
+	p.ignoreGlobs = append(p.ignoreGlobs, hlPath)
+	return p
 }
 
-func (p *Parser) InitChannels() (<-chan Section, <-chan error) {
-	p.sectionsCh = make(chan Section)
+func (p *Parser) initChannels() {
+	p.entriesCh = make(chan entry.Interface)
 	p.errCh = make(chan error)
-	return p.sectionsCh, p.errCh
 }
 
-func (p *Parser) CloseChannels() {
-	close(p.sectionsCh)
+func (p *Parser) closeChannels() {
+	close(p.entriesCh)
 	close(p.errCh)
 }

@@ -1,20 +1,10 @@
 package trie
 
-import (
-	"fmt"
-	"sync"
-)
-
-type Root[Data any] struct {
-	path string
-	next *Node[Data]
-}
+import "fmt"
 
 type Node[Data any] struct {
-	mu       sync.RWMutex
+	Data     Data
 	children map[string]*Node[Data]
-
-	Data Data
 }
 
 func NewNode[Data any]() *Node[Data] {
@@ -23,15 +13,17 @@ func NewNode[Data any]() *Node[Data] {
 	}
 }
 
+func (n *Node[Data]) Replace(other *Node[Data]) {
+	n.Data = other.Data
+	n.children = other.children
+}
+
 func (n *Node[Data]) Insert(key string) *Node[Data] {
 	n.children[key] = NewNode[Data]()
 	return n.children[key]
 }
 
 func (n *Node[Data]) Get(key string) *Node[Data] {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-
 	child, ok := n.children[key]
 	if !ok {
 		return nil

@@ -1,0 +1,37 @@
+<script>
+    document.querySelectorAll('span[data-code][data-docs]').forEach(span => {
+        span.onclick = function () {
+            const code = this.getAttribute('data-code')
+            const docs = this.getAttribute('data-docs')
+
+            const folder = this.nextElementSibling;
+            if (folder && folder.tagName === 'UL') {
+                if (folder.classList.contains('hidden')) {
+                    folder.classList.remove('hidden');
+                } else {
+                    folder.classList.add('hidden');
+                }
+            }
+
+            createDocumentation(code, docs)
+        }
+    })
+
+    async function createDocumentation(code, docs) {
+        try {
+            const response = await fetch(
+                `/gen?code=${encodeURIComponent(code)}&docs=${encodeURIComponent(docs)}`
+            );
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                throw new Error(errorText || "Файл не найден или ошибка сервера");
+            }
+
+            const text = await response.text();
+            document.getElementById('content').innerHTML = `<pre>${text}</pre>`;
+        } catch (error) {
+            document.getElementById('content').innerHTML = `<p>${error}</p>`;
+        }
+    }
+</script>

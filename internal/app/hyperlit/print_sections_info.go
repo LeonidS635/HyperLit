@@ -7,7 +7,7 @@ import (
 )
 
 func (h *HyperLit) printSectionsInfoByStatus(status int) error {
-	sections := h.sectionsStatuses.Get(status)
+	sections := h.sectionsStates.Get(status)
 	if len(sections) == 0 {
 		return nil
 	}
@@ -28,39 +28,39 @@ func (h *HyperLit) printSectionsInfoByStatus(status int) error {
 		return fmt.Errorf("error printing sections info: unknown status: %d", status)
 	}
 
-	for _, section := range sections {
-		fmt.Println(section.Path)
+	for _, sectionState := range sections {
+		fmt.Println(sectionState.Path)
 	}
 	fmt.Println()
 
 	return nil
 }
 
-func (h *HyperLit) printSectionsInfo() error {
-	if !h.sectionsStatuses.Check(info.StatusCreated) &&
-		!h.sectionsStatuses.Check(info.StatusDeleted) &&
-		!h.sectionsStatuses.Check(info.StatusDocsOutdated) &&
-		!h.sectionsStatuses.Check(info.StatusCodeOutdated) &&
-		!h.sectionsStatuses.Check(info.StatusModified) {
+func (h *HyperLit) printSectionsInfo() (bool, error) {
+	if !h.sectionsStates.Check(info.StatusCreated) &&
+		!h.sectionsStates.Check(info.StatusDeleted) &&
+		!h.sectionsStates.Check(info.StatusDocsOutdated) &&
+		!h.sectionsStates.Check(info.StatusCodeOutdated) &&
+		!h.sectionsStates.Check(info.StatusModified) {
 
 		fmt.Println("No changes found")
-		return nil
+		return false, nil
 	}
 
 	if err := h.printSectionsInfoByStatus(info.StatusCreated); err != nil {
-		return err
+		return false, err
 	}
 	if err := h.printSectionsInfoByStatus(info.StatusDeleted); err != nil {
-		return err
+		return false, err
 	}
 	if err := h.printSectionsInfoByStatus(info.StatusDocsOutdated); err != nil {
-		return err
+		return false, err
 	}
 	if err := h.printSectionsInfoByStatus(info.StatusCodeOutdated); err != nil {
-		return err
+		return false, err
 	}
 	if err := h.printSectionsInfoByStatus(info.StatusModified); err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return true, nil
 }

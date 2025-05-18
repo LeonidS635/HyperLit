@@ -2,8 +2,8 @@ package hyperlit
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/LeonidS635/HyperLit/internal/docsgenerator"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
@@ -12,44 +12,40 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs"
 )
 
-type HyperLit struct {
-	hlPath      string
-	projectPath string
+const hlDirName = "hl"
 
-	rootSection      *trie.Node[info.TrieSection]
-	sectionsStatuses *info.SectionsStatuses
+type HyperLit struct {
+	projectName string
+	projectPath string
+	hlPath      string
+
+	projectTrie    *trie.Node[info.Section]
+	sectionsStates *info.SectionsStates
 
 	docsGenerator docsgenerator.Generator
 	parser        *parser.Parser
 	vcs           vcs.VCS
 }
 
-func New(path, projectPath string) *HyperLit {
+func New(projectPath string) *HyperLit {
+	hlPath := filepath.Join(projectPath, hlDirName)
 	h := &HyperLit{
-		hlPath:      path,
+		projectName: filepath.Base(projectPath),
 		projectPath: projectPath,
-		rootSection: trie.NewNode[info.TrieSection](),
+		hlPath:      hlPath,
 
-		parser: parser.NewParser(),
-		vcs:    vcs.NewVCS(path),
+		sectionsStates: info.NewSectionsStates(),
+
+		parser: parser.NewParser(projectPath, hlPath),
+		vcs:    vcs.NewVCS(projectPath, hlPath),
 	}
-	h.docsGenerator = docsgenerator.NewGenerator(path, h.vcs.GetDocsAndCodeFromTree)
+	h.docsGenerator = docsgenerator.NewGenerator(hlPath, h.vcs.LoadEntryData)
 	return h
 }
 
-func (h *HyperLit) Init(ctx context.Context) {
-	if err := os.Mkdir(h.hlPath, 0755); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func (h *HyperLit) Init(ctx context.Context) error {
+	if err := os.Mkdir(h.hlPath, 0755); err != nil && !os.IsExist(err) {
+		return err
 	}
-	if err := h.vcs.Init(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func (h *HyperLit) Diff() {}
-
-func (h *HyperLit) removeUnused() {
-	return
+	return h.vcs.Init()
 }

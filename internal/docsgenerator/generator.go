@@ -15,20 +15,20 @@ const serverPort = 8123
 type Generator struct {
 	htmlFilepath string
 
-	parseFileFn func(hash string) ([]byte, []byte, error)
+	getDataByHash func(hash string) ([]byte, error)
 }
 
-func NewGenerator(rootPath string, parseFileFn func(hash string) ([]byte, []byte, error)) Generator {
+func NewGenerator(rootPath string, getDataByHash func(hash string) ([]byte, error)) Generator {
 	return Generator{
-		htmlFilepath: filepath.Join(rootPath, indexHTMLFile),
-		parseFileFn:  parseFileFn,
+		htmlFilepath:  filepath.Join(rootPath, indexHTMLFile),
+		getDataByHash: getDataByHash,
 	}
 }
 
-func (g Generator) Generate(rootNode *trie.Node[info.TrieSection], rootName string) error {
+func (g Generator) Generate(rootNode *trie.Node[info.Section], rootName string) error {
 	return html.Generate(g.htmlFilepath, rootNode, rootName)
 }
 
 func (g Generator) StartServer() error {
-	return server.Start(serverPort, g.htmlFilepath, g.parseFileFn)
+	return server.Start(serverPort, g.htmlFilepath, g.getDataByHash)
 }

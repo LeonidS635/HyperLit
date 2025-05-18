@@ -2,39 +2,34 @@ package hyperlit
 
 import (
 	"context"
-	"fmt"
-	"os"
 )
 
-func (h *HyperLit) CommitFirstStep(ctx context.Context) {
+func (h *HyperLit) CommitFirstStep(ctx context.Context) (bool, error) {
+	if err := h.Init(ctx); err != nil {
+		return false, err
+	}
+
 	if err := h.getSectionsStatuses(ctx); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return false, err
 	}
 
 	if err := h.commitSections(ctx); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return false, err
 	}
 
-	if err := h.printSectionsInfo(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	return h.printSectionsInfo()
 }
 
-func (h *HyperLit) CommitSecondStep(ctx context.Context) {
-	h.saveSections(ctx)
-
-	if err := h.docsGenerator.Generate(h.rootSection, h.projectPath); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func (h *HyperLit) CommitSecondStep(ctx context.Context) error {
+	if err := h.saveSections(ctx); err != nil {
+		return err
 	}
 
-	if err := h.vcs.Dump(ctx); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	if err := h.docsGenerator.Generate(h.projectTrie, h.projectName); err != nil {
+		return err
 	}
+
+	return h.vcs.Dump(ctx)
 }
 
 func (h *HyperLit) Clear() error {

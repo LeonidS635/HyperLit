@@ -23,3 +23,7 @@ func (e Entry) GetHash() []byte {
 func (e Entry) GetData() []byte {
 	return e.Data
 }
+
+func (e Entry) GetContent() []byte {
+	return e.Data
+}

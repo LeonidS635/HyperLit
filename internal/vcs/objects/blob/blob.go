@@ -9,6 +9,10 @@ type Blob struct {
 	content []byte
 }
 
+func NewBlob(type_ byte, content []byte) *Blob {
+	return &Blob{type_: type_, content: content}
+}
+
 func prepare(type_ byte) (*Blob, error) {
 	header, err := format.FormHeader(type_)
 	if err != nil {

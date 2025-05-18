@@ -1,0 +1,217 @@
+{
+  ".go": {
+    "lang": "Go",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".c": {
+    "lang": "C",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".cpp": {
+    "lang": "C++",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".cc": {
+    "lang": "C++",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".cxx": {
+    "lang": "C++",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".h": {
+    "lang": "C",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".hpp": {
+    "lang": "C++",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".cs": {
+    "lang": "C#",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".java": {
+    "lang": "Java",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".js": {
+    "lang": "JavaScript",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".ts": {
+    "lang": "TypeScript",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".py": {
+    "lang": "Python",
+    "single_line": "#",
+    "multi_line_start": "\"\"\"",
+    "multi_line_end": "\"\"\""
+  },
+  ".rb": {
+    "lang": "Ruby",
+    "single_line": "#",
+    "multi_line_start": "=begin",
+    "multi_line_end": "=end"
+  },
+  ".php": {
+    "lang": "PHP",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".swift": {
+    "lang": "Swift",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".kt": {
+    "lang": "Kotlin",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".scala": {
+    "lang": "Scala",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".rs": {
+    "lang": "Rust",
+    "single_line": "//",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".sh": {
+    "lang": "Shell",
+    "single_line": "#"
+  },
+  ".bash": {
+    "lang": "Bash",
+    "single_line": "#"
+  },
+  ".zsh": {
+    "lang": "Zsh",
+    "single_line": "#"
+  },
+  ".html": {
+    "lang": "HTML",
+    "multi_line_start": "<!--",
+    "multi_line_end": "-->"
+  },
+  ".xml": {
+    "lang": "XML",
+    "multi_line_start": "<!--",
+    "multi_line_end": "-->"
+  },
+  ".css": {
+    "lang": "CSS",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".scss": {
+    "lang": "SCSS",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".less": {
+    "lang": "LESS",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".sql": {
+    "lang": "SQL",
+    "single_line": "--",
+    "multi_line_start": "/*",
+    "multi_line_end": "*/"
+  },
+  ".lua": {
+    "lang": "Lua",
+    "single_line": "--",
+    "multi_line_start": "--[[",
+    "multi_line_end": "]]"
+  },
+  ".erl": {
+    "lang": "Erlang",
+    "single_line": "%"
+  },
+  ".hs": {
+    "lang": "Haskell",
+    "single_line": "--",
+    "multi_line_start": "{-",
+    "multi_line_end": "-}"
+  },
+  ".clj": {
+    "lang": "Clojure",
+    "single_line": ";;"
+  },
+  ".r": {
+    "lang": "R",
+    "single_line": "#"
+  },
+  ".tex": {
+    "lang": "LaTeX",
+    "single_line": "%"
+  },
+  ".md": {
+    "lang": "Markdown",
+    "multi_line_start": "<!--",
+    "multi_line_end": "-->"
+  },
+  ".yaml": {
+    "lang": "YAML",
+    "single_line": "#"
+  },
+  ".yml": {
+    "lang": "YAML",
+    "single_line": "#"
+  },
+  ".json": {
+    "lang": "JSON"
+  },
+  ".toml": {
+    "lang": "TOML",
+    "single_line": "#"
+  },
+  ".ini": {
+    "lang": "INI",
+    "single_line": ";"
+  },
+  ".bat": {
+    "lang": "Batch",
+    "single_line": "REM"
+  },
+  ".ps1": {
+    "lang": "PowerShell",
+    "single_line": "#"
+  },
+  ".vb": {
+    "lang": "VB.NET",
+    "single_line": "'"
+  }
+}

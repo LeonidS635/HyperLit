@@ -10,8 +10,14 @@ import (
 )
 
 type Tree struct {
-	name    string
-	content []byte
+	name          string
+	registrations registrations
+}
+
+func NewTree(data []byte) *Tree {
+	t := &Tree{}
+	t.registrations = t.registrations.setData(data)
+	return t
 }
 
 func Prepare(name string) (*Tree, error) {
@@ -21,21 +27,9 @@ func Prepare(name string) (*Tree, error) {
 	}
 
 	return &Tree{
-		name:    name,
-		content: header,
+		name:          name,
+		registrations: newRegistrations(header),
 	}, nil
-}
-
-func FromEntry(entry entry.Entry) (*Tree, error) {
-	t, err := Prepare(entry.Name)
-	if err != nil {
-		return nil, err
-	}
-	if err = format.PutSizeInHeader(t.content[:format.HeaderSize], entry.Size); err != nil {
-		return nil, err
-	}
-	t.content = append(t.content, entry.Data...)
-	return t, nil
 }
 
 func Parse(content []byte) ([]entry.Entry, error) {
@@ -64,12 +58,8 @@ func Parse(content []byte) ([]entry.Entry, error) {
 	return entries, nil
 }
 
-func (t *Tree) RegisterEntry(child entry.Interface) error {
-	t.content = append(t.content, child.GetType())
-	t.content = append(t.content, child.GetHash()...)
-	t.content = append(t.content, child.GetName()...)
-	t.content = append(t.content, format.TreeEntriesSeparator)
-	return format.PutSizeInHeader(t.content[:format.HeaderSize], len(t.content)-format.HeaderSize)
+func (t *Tree) RegisterEntry(child entry.Interface) {
+	t.registrations = t.registrations.append(child)
 }
 
 func (t *Tree) Clear(name string) (*Tree, error) {
@@ -78,40 +68,24 @@ func (t *Tree) Clear(name string) (*Tree, error) {
 		return nil, err
 	}
 
-	entries, err := Parse(t.content)
+	content, err := t.registrations.getData()
+	if err != nil {
+		return nil, err
+	}
+	//fmt.Println(name)
+	//for _, child := range t.registrations.children {
+	//	fmt.Println(child.GetType(), child.GetName(), hasher.ConvertToHex(child.GetHash()))
+	//}
+	//fmt.Println(hex.Dump(content))
+
+	entries, err := Parse(content[format.HeaderSize:])
 	if err != nil {
 		return nil, err
 	}
 	for _, e := range entries {
 		if e.Type == format.DocsType || e.Type == format.CodeType {
-			if err = newTree.RegisterEntry(e); err != nil {
-				return nil, err
-			}
+			newTree.RegisterEntry(e)
 		}
 	}
 	return newTree, nil
-}
-
-func (t *Tree) GetType() byte {
-	return format.TreeType
-}
-
-func (t *Tree) GetName() string {
-	return t.name
-}
-
-func (t *Tree) SetName(name string) {
-	t.name = name
-}
-
-func (t *Tree) GetHash() []byte {
-	return hasher.Calculate(t.content)
-}
-
-func (t *Tree) GetData() []byte {
-	return t.content
-}
-
-func (t *Tree) GetEntries() ([]entry.Entry, error) {
-	return Parse(t.content[format.HeaderSize:])
 }

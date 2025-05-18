@@ -1,7 +1,6 @@
 package roothash
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,7 @@ func (r RootHash) Save(hash []byte) error {
 
 func (r RootHash) Get() (string, error) {
 	hash, err := os.ReadFile(r.path)
-	if errors.Is(err, os.ErrNotExist) {
+	if os.IsNotExist(err) {
 		return "", nil
 	}
 	if err != nil {

@@ -2,7 +2,6 @@ package info
 
 import (
 	"context"
-	"path/filepath"
 	"sync"
 
 	"github.com/LeonidS635/HyperLit/internal/helpers"
@@ -10,81 +9,70 @@ import (
 )
 
 func Compare(
-	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section], rootNode *trie.Node[TrieSection],
-	rootPath string,
-) *SectionsStatuses {
-	sectionsStatuses := newSectionsStatuses()
-	if sections == nil {
-		rootNode.Data.Status = StatusCreated
-		sectionsStatuses.Add(StatusCreated, SectionStatus{Path: rootPath, Trie: nil, FullTrieNode: rootNode})
-		return sectionsStatuses
+	ctx context.Context, filesTrieNode *trie.Node[File], sectionsTrieNode *trie.Node[Section],
+	sectionsStates *SectionsStates,
+) (*trie.Node[Section], error) {
+	sectionsTrieRootNode := sectionsTrieNode
+	if sectionsTrieNode == nil {
+		sectionsTrieRootNode = trie.NewNode[Section]()
+		sectionsTrieRootNode.Data.Path = filesTrieNode.Data.Path
+		sectionsStates.Add(StatusCreated, sectionsTrieRootNode.Data.Path, sectionsTrieRootNode, nil)
+		return sectionsTrieRootNode, nil
 	}
 
 	var wg sync.WaitGroup
 
-	done := make(chan struct{})
-
 	wg.Add(1)
-	go compare(ctx, files, sections, rootNode, rootPath, sectionsStatuses, &wg)
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	go compare(ctx, filesTrieNode, sectionsTrieRootNode, sectionsStates, &wg)
 
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-done:
-	}
-
-	return sectionsStatuses
+	_ = helpers.WaitCtx(ctx, &wg, nil)
+	return sectionsTrieRootNode, ctx.Err()
 }
 
 func compare(
-	ctx context.Context, files *trie.Node[File], sections *trie.Node[Section], curNode *trie.Node[TrieSection],
-	path string, sectionsStatuses *SectionsStatuses, wg *sync.WaitGroup,
+	ctx context.Context, filesTrieNode *trie.Node[File], sectionsTrieNode *trie.Node[Section],
+	sectionsStates *SectionsStates, wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
 	}
 
-	curNode.Data.Section = sections.Data.This
+	fileInfo := filesTrieNode.Data
+	sectionInfo := sectionsTrieNode.Data
 
-	fileInfo := files.Data
-	sectionInfo := sections.Data
 	if !fileInfo.IsDir {
 		status := compareFileAndSection(fileInfo, sectionInfo)
-		curNode.Data.Status = status
-		sectionsStatuses.Add(status, SectionStatus{Path: path, Trie: sections, FullTrieNode: curNode})
+
+		if status == StatusUnmodified {
+			propagateStatus(ctx, status, sectionsTrieNode, sectionsStates)
+		} else {
+			sectionsTrieNode.Data.Status = status
+			sectionsStates.Add(status, sectionsTrieNode.Data.Path, sectionsTrieNode, sectionsTrieNode)
+		}
+
 		return
 	}
 
-	childrenFiles := files.GetAll()
-	childrenSections := sections.GetAll()
+	childrenFiles := filesTrieNode.GetAll()
+	childrenSections := sectionsTrieNode.GetAll()
 
 	seen := make(map[string]struct{})
-	for name, file := range childrenFiles {
-		filePath := filepath.Join(path, name)
-		nextNode := curNode.Insert(name)
-
-		if section, ok := childrenSections[name]; ok {
+	for name, childFile := range childrenFiles {
+		if childSection, ok := childrenSections[name]; ok {
 			wg.Add(1)
-			go compare(ctx, file, section, nextNode, filePath, sectionsStatuses, wg)
+			go compare(ctx, childFile, childSection, sectionsStates, wg)
 		} else {
-			nextNode.Data.Status = StatusCreated
-			sectionsStatuses.Add(StatusCreated, SectionStatus{Path: filePath, Trie: nil, FullTrieNode: nextNode})
+			nextNode := sectionsTrieNode.Insert(name)
+			nextNode.Data.Path = childFile.Data.Path
+			sectionsStates.Add(StatusCreated, nextNode.Data.Path, nextNode, nil)
 		}
 		seen[name] = struct{}{}
 	}
 
-	for name, section := range childrenSections {
+	for name, childSection := range childrenSections {
 		if _, ok := seen[name]; !ok {
-			nextNode := curNode.Insert(name)
-			nextNode.Data.Status = StatusDeleted
-			sectionsStatuses.Add(
-				StatusDeleted, SectionStatus{Path: filepath.Join(path, name), Trie: section, FullTrieNode: nextNode},
-			)
+			propagateStatus(ctx, StatusDeleted, childSection, sectionsStates)
 		}
 	}
 }

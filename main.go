@@ -11,8 +11,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-const hlPath = "hl"
-
 var path string
 
 func init() {
@@ -26,7 +24,7 @@ func main() {
 	exPath := filepath.Dir(ex)
 	path = filepath.Join(exPath, path)
 
-	hl := hyperlit.New(hlPath, path)
+	hl := hyperlit.New(path)
 	defer hl.Clear()
 
 	cmd.InitCmds(hl)
