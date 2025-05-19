@@ -1,6 +1,7 @@
 package docsgenerator
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/LeonidS635/HyperLit/internal/docsgenerator/html"
@@ -10,7 +11,6 @@ import (
 )
 
 const indexHTMLFile = "index.html"
-const serverPort = 8123
 
 type Generator struct {
 	htmlFilepath string
@@ -29,6 +29,6 @@ func (g Generator) Generate(rootNode *trie.Node[info.Section], rootName string) 
 	return html.Generate(g.htmlFilepath, rootNode, rootName)
 }
 
-func (g Generator) StartServer() error {
-	return server.Start(serverPort, g.htmlFilepath, g.getDataByHash)
+func (g Generator) StartServer(ctx context.Context, port int) error {
+	return server.Start(ctx, port, g.htmlFilepath, g.getDataByHash)
 }

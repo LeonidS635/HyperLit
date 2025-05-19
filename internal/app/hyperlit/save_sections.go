@@ -12,11 +12,6 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/info"
 )
 
-// TODO: may be situation when error sends in closed errCh (check that IN ALL PROGRAM!!!!!!!!!!!!)
-// Perhaps should make errCh buffered (with size sema.recourseLimiter or something like that)
-
-// TODO: Make proper tempdir deletion in case of an error (now renamed files stay empty)
-
 func (h *HyperLit) saveSections(ctx context.Context) error {
 	saveCtx, saveCancel := context.WithCancel(ctx)
 	defer saveCancel()

@@ -16,10 +16,6 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-// TODO: add comment when new section starts
-// TODO: think about docs section in start of a file
-// TODO: fix clearing tmp dir in case of errors and panics
-
 func (p *Parser) Parse(
 	ctx context.Context, path string, section *tree.Tree, sectionsTrieNode *trie.Node[info.Section],
 ) error {
@@ -60,37 +56,34 @@ func (p *Parser) parse(
 		line := p.fileScanner.Bytes()
 
 		line, lineOffset := comments.TrimAndCountLeadingSpaces(line)
+		if len(line) == 0 { // Empty line
+			lineOffset = sectionOffset
+		}
 
-		// Stop parsing the current section if the offset decreases (ignore empty line case)
-		if len(line) > 0 && lineOffset < sectionOffset {
+		// Stop parsing the current section if the offset decreases
+		if lineOffset < sectionOffset {
 			needToScan = false
 			break
 		}
 
 		// Check whether the line is a comment line
-		line, isComment := p.commentsAnalyzer.IsComment(line)
+		lineWithoutCommentSyntax, isComment := p.commentsAnalyzer.IsComment(line)
+		isDocsSection = isDocsSection && isComment
 
-		if !isComment {
-			isDocsSection = false
-		} else {
-			if docsStartOffset := bytes.Index(line, docsStartSeq); docsStartOffset != -1 {
+		if isComment {
+			if docsStartOffset := bytes.Index(lineWithoutCommentSyntax, docsStartSeq); docsStartOffset != -1 {
 				//if lineWithoutSpaces := bytes.TrimSpace(line[:docsStartOffset]); len(lineWithoutSpaces) > 0 {
 				//	return nil, fmt.Errorf("line %d: %w", *lineNumber, ErrNewLineCmd)
 				//}
 
-				// Check that code section is opened
-				//if isDocsSection {
-				//	return false, ParseErr{line: p.lineNumber, err: CreateSectionInsideDocsErr}
-				//}
-
-				// If a new section begins with the same offset, it is not our child, it is on the same level
+				// If a new section starts at the same offset, it is a child of the parent section, not ours
 				if lineOffset == sectionOffset {
 					needToScan = false
 					break
 				}
 
 				// Check correctness of section name
-				name := string(bytes.TrimSpace(line[docsStartOffset+len(docsStartSeq)+1:]))
+				name := string(bytes.TrimSpace(lineWithoutCommentSyntax[docsStartOffset+len(docsStartSeq)+1:]))
 				if len(name) == 0 { // Section name must not contain only spaces or be empty
 					return false, ParseErr{line: p.lineNumber, err: EmptySectionNameErr}
 				}
@@ -114,9 +107,45 @@ func (p *Parser) parse(
 				}
 				section.RegisterEntry(subSection)
 
+				// Write section start comment if possible
+				var sectionLine []byte
+				if singleLineComment := p.commentsAnalyzer.GetSyntax().SingleLine; singleLineComment != nil {
+					sectionLine = make([]byte, 0, lineOffset+len(singleLineComment)+len(" Section: ")+len(name))
+					for i := 0; i < lineOffset-max(sectionOffset, 0); i++ {
+						sectionLine = append(sectionLine, ' ')
+					}
+					sectionLine = append(sectionLine, singleLineComment...)
+					sectionLine = append(sectionLine, ' ')
+					sectionLine = append(sectionLine, "Section: "...)
+					sectionLine = append(sectionLine, name...)
+				} else if multiLineCommentStart, multiLineCommentEnd := p.commentsAnalyzer.GetSyntax().MultiLineStart, p.commentsAnalyzer.GetSyntax().MultiLineEnd; multiLineCommentStart != nil && multiLineCommentEnd != nil {
+					sectionLine = make(
+						[]byte, 0,
+						lineOffset+len(multiLineCommentStart)+len(" Section: ")+len(name)+1+len(multiLineCommentEnd),
+					)
+					for i := 0; i < lineOffset-max(sectionOffset, 0); i++ {
+						sectionLine = append(sectionLine, ' ')
+					}
+					sectionLine = append(sectionLine, multiLineCommentStart...)
+					sectionLine = append(sectionLine, ' ')
+					sectionLine = append(sectionLine, "Section: "...)
+					sectionLine = append(sectionLine, name...)
+					sectionLine = append(sectionLine, ' ')
+					sectionLine = append(sectionLine, multiLineCommentEnd...)
+				}
+
+				if sectionLine != nil {
+					if err = codeSection.WriteLine(sectionLine); err != nil {
+						return false, ParseErr{
+							line: p.lineNumber,
+							err:  fmt.Errorf("error saving secoins line: %w", err),
+						}
+					}
+				}
+
 				continue // Continue parsing from the next line
 
-			} else if docsEndOffset := bytes.Index(line, docsEndSeq); docsEndOffset != -1 {
+			} else if docsEndOffset := bytes.Index(lineWithoutCommentSyntax, docsEndSeq); docsEndOffset != -1 {
 				//if lineWithoutSpaces := bytes.TrimSpace(line[:docsEndOffset]); len(lineWithoutSpaces) > 0 {
 				//	return nil, fmt.Errorf("line %d: %w", *lineNumber, ErrNewLineCmd)
 				//}
@@ -128,7 +157,7 @@ func (p *Parser) parse(
 				isDocsSection = false
 				continue // Continue parsing from the next line
 
-			} else if codeEndOffset := bytes.Index(line, codeEndSeq); codeEndOffset != -1 {
+			} else if codeEndOffset := bytes.Index(lineWithoutCommentSyntax, codeEndSeq); codeEndOffset != -1 {
 				//if lineWithoutSpaces := bytes.TrimSpace(line[:docsEndOffset]); len(lineWithoutSpaces) > 0 {
 				//	return nil, fmt.Errorf("line %d: %w", *lineNumber, ErrNewLineCmd)
 				//}
@@ -143,11 +172,23 @@ func (p *Parser) parse(
 
 		// Write content
 		if isDocsSection {
-			if err = docsSection.WriteLine(line); err != nil {
+			lineToWrite := make([]byte, 0, lineOffset-sectionOffset+len(lineWithoutCommentSyntax))
+			for i := 0; i < lineOffset-max(sectionOffset, 0); i++ {
+				lineToWrite = append(lineToWrite, ' ')
+			}
+			lineToWrite = append(lineToWrite, lineWithoutCommentSyntax...)
+
+			if err = docsSection.WriteLine(lineToWrite); err != nil {
 				return false, ParseErr{line: p.lineNumber, err: err}
 			}
 		} else {
-			if err = codeSection.WriteLine(line); err != nil {
+			lineToWrite := make([]byte, 0, lineOffset-sectionOffset+len(line))
+			for i := 0; i < lineOffset-max(sectionOffset, 0); i++ {
+				lineToWrite = append(lineToWrite, ' ')
+			}
+			lineToWrite = append(lineToWrite, line...)
+
+			if err = codeSection.WriteLine(lineToWrite); err != nil {
 				return false, ParseErr{line: p.lineNumber, err: err}
 			}
 		}
@@ -171,12 +212,6 @@ func (p *Parser) parse(
 		MTime: p.fileModTime,
 		This:  section,
 	}
-
-	//fmt.Println(
-	//	"SAVING", path, "my hash:", hasher.ConvertToHex(section.GetHash()), "code hash:",
-	//	hasher.ConvertToHex(codeSection.GetHash()), ", docs hash:",
-	//	hasher.ConvertToHex(docsSection.GetHash()),
-	//)
 
 	// Send docs and code to save
 	helpers.SendCtx[entry.Interface](ctx, p.blobsSavingCh, codeSection)

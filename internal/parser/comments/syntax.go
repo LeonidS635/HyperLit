@@ -18,13 +18,13 @@ type syntaxJSON struct {
 
 // Syntax struct
 
-type syntax struct {
+type Syntax struct {
 	SingleLine     []byte
 	MultiLineStart []byte
 	MultiLineEnd   []byte
 }
 
-var commentsSyntax = make(map[string]syntax)
+var commentsSyntax = make(map[string]Syntax)
 
 // Unmarshall JSON
 func init() {
@@ -35,7 +35,7 @@ func init() {
 	}
 
 	for k, v := range syntaxMap {
-		commentsSyntax[k] = syntax{
+		commentsSyntax[k] = Syntax{
 			SingleLine:     []byte(v.SingleLine),
 			MultiLineStart: []byte(v.MultiLineStart),
 			MultiLineEnd:   []byte(v.MultiLineEnd),

@@ -1,3 +1,4 @@
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
     document.querySelectorAll('span[data-code][data-docs]').forEach(span => {
         span.onclick = function () {
@@ -13,25 +14,67 @@
                 }
             }
 
-            createDocumentation(code, docs)
+            createDocumentation(code, docs, span.textContent)
         }
     })
 
-    async function createDocumentation(code, docs) {
+    function toggleCode(header) {
+        const codeBlock = header.nextElementSibling;
+        header.classList.toggle('active');
+        codeBlock.classList.toggle('hidden');
+    }
+
+    async function createDocumentation(code, docs, title) {
         try {
             const response = await fetch(
                 `/gen?code=${encodeURIComponent(code)}&docs=${encodeURIComponent(docs)}`
             );
 
             if (!response.ok) {
-                const errorText = await response.text()
+                const errorText = await response.text();
                 throw new Error(errorText || "Файл не найден или ошибка сервера");
             }
 
-            const text = await response.text();
-            document.getElementById('content').innerHTML = `<pre>${text}</pre>`;
+            const data = await response.json();
+
+            const markdownContent = data.docs ? `
+                <div class="markdown-content">
+                    ${marked.parse(data.docs)}
+                </div>` : ''
+            ;
+
+            const codeContent = data.code ? `
+                <div class="code-section">
+	                <div class="code-header" onclick="toggleCode(this)">
+	                    <span>Показать код</span>
+	                    <svg class="code-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none">
+	                        <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+	                    </svg>
+	                </div>
+	                <pre class="code-block hidden"><code>${escapeHtml(data.code)}</code></pre>
+                </div>` : ''
+            ;
+
+            document.getElementById('content').innerHTML =
+                `<div class="content-header">${title}</div>${markdownContent}${codeContent}`
+            ;
         } catch (error) {
-            document.getElementById('content').innerHTML = `<p>${error}</p>`;
+            document.getElementById('content').innerHTML =
+                `<div class="content-header">Ошибка</div>
+                 <div class="error-message">
+                    <p>${error.message}</p>
+                 </div>`
+            ;
         }
+    }
+
+    // Helper function to escape HTML
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>

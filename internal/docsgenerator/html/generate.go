@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/LeonidS635/HyperLit/internal/docsgenerator/html/static"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
@@ -11,8 +12,8 @@ import (
 )
 
 const (
-	sectionTemplate = "<span class=folder data-code=\"%s\" data-docs=\"%s\">%s</span>"
-	ulOpenTemplate  = "<ul id=\"%s\" class='hidden nested'>"
+	spanTemplate = "<span class=\"folder\" data-code=\"%s\" data-docs=\"%s\">%s</span>"
+	ulTemplate   = "<ul class=\"hidden nested\">"
 )
 
 func Generate(htmlFilePath string, rootNode *trie.Node[info.Section], rootName string) error {
@@ -25,25 +26,22 @@ func Generate(htmlFilePath string, rootNode *trie.Node[info.Section], rootName s
 	writer := bufio.NewWriter(htmlFile)
 	defer writer.Flush()
 
-	if _, err = writer.WriteString("<!DOCTYPE html><html lang=ru><head>"); err != nil {
+	if _, err = writer.WriteString("<!DOCTYPE html><html lang=ru>"); err != nil {
 		return err
 	}
-	if _, err = writer.WriteString(head); err != nil {
+	if _, err = writer.WriteString(static.Head); err != nil {
 		return err
 	}
 	if _, err = writer.WriteString(static.Style); err != nil {
 		return err
 	}
-	if _, err = writer.WriteString("<body>"); err != nil {
-		return err
-	}
-	if _, err = writer.WriteString("<div class=container><div class=tree><ul><li>"); err != nil {
+	if _, err = writer.WriteString("<body><div class=\"container\"><div class=\"tree\"><div class=\"tree-header\">HyperLit</div><ul>"); err != nil {
 		return err
 	}
 	if err = gen(rootNode, rootName, writer); err != nil {
 		return err
 	}
-	if _, err = writer.WriteString("</li></ul></div>" + helloPage + "</div>"); err != nil {
+	if _, err = writer.WriteString("</ul></div>" + static.EmptyState + "</div>"); err != nil {
 		return err
 	}
 	if _, err = writer.WriteString(static.Script); err != nil {
@@ -61,41 +59,33 @@ func gen(node *trie.Node[info.Section], name string, writer *bufio.Writer) error
 		return nil
 	}
 
+	if _, err := writer.WriteString("<li>"); err != nil {
+		return err
+	}
 	if _, err := writer.WriteString(
 		fmt.Sprintf(
-			sectionTemplate, node.Data.CodeHash, node.Data.DocsHash, name,
+			spanTemplate, node.Data.CodeHash, node.Data.DocsHash, name,
 		),
 	); err != nil {
 		return err
 	}
-	if _, err := writer.WriteString(fmt.Sprintf(ulOpenTemplate, node.Data.Hash)); err != nil {
+	if _, err := writer.WriteString(ulTemplate); err != nil {
 		return err
 	}
 
-	for childName, child := range node.GetAll() {
-		if _, err := writer.WriteString("<li>"); err != nil {
-			return err
-		}
-		if err := gen(child, childName, writer); err != nil {
-			return err
-		}
-		if _, err := writer.WriteString("</li>"); err != nil {
+	children := node.GetAll()
+	childrenNames := make([]string, 0, len(children))
+	for childName := range children {
+		childrenNames = append(childrenNames, childName)
+	}
+	sort.Strings(childrenNames)
+
+	for _, childName := range childrenNames {
+		if err := gen(children[childName], childName, writer); err != nil {
 			return err
 		}
 	}
 
-	_, err := writer.WriteString("</ul>")
+	_, err := writer.WriteString("</ul></li>")
 	return err
-}
-
-func FormDocumentation(docs, code []byte) []byte {
-	documentation := make([]byte, 0, len(docs)+len(code))
-
-	documentation = append(documentation, docs...)
-	documentation = append(documentation, '\n')
-	documentation = append(documentation, "<details><summary>Показать код</summary><pre><code>"...)
-	documentation = append(documentation, code...)
-	documentation = append(documentation, "</code></pre></details>"...)
-
-	return documentation
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-func (p *Parser) parseDir(
+func (p *parserWithChannels) parseDir(
 	ctx context.Context, path string, section *tree.Tree, sectionsTrieNode *trie.Node[info.Section],
 ) {
 	defer p.wg.Done()

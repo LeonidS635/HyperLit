@@ -7,12 +7,12 @@ import "bytes"
 //
 // If it is a comment line, IsComment returns the line without comment characters and true.
 // Otherwise, it returns the unchanged line and false.
-func (a Analyzer) IsComment(line []byte) ([]byte, bool) {
+func (a *Analyzer) IsComment(line []byte) ([]byte, bool) {
 	// Multiline case
 	if a.isInMultiLineSection {
 		// Check if multiline comments section ends
-		if bytes.HasPrefix(line, a.syntax.MultiLineEnd) {
-			line = bytes.TrimPrefix(line, a.syntax.MultiLineEnd)
+		if bytes.HasSuffix(line, a.syntax.MultiLineEnd) {
+			line = bytes.TrimSuffix(line, a.syntax.MultiLineEnd)
 			a.isInMultiLineSection = false
 		}
 		return line, true

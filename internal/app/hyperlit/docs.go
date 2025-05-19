@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-func (h *HyperLit) Docs(ctx context.Context) error {
-	return h.docsGenerator.StartServer()
+func (h *HyperLit) Docs(ctx context.Context, port int) error {
+	return h.docsGenerator.StartServer(ctx, port)
 }

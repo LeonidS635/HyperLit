@@ -15,7 +15,7 @@ var (
 )
 
 type Parser struct {
-	commentsAnalyzer comments.Analyzer
+	commentsAnalyzer *comments.Analyzer
 	fileScanner      *bufio.Scanner
 	fileModTime      time.Time
 	blobsSavingCh    chan<- entry.Interface

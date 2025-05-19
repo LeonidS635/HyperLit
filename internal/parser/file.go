@@ -14,7 +14,7 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-func (p *Parser) parseFile(
+func (p *parserWithChannels) parseFile(
 	ctx context.Context, path string, section *tree.Tree, sectionsTrieNode *trie.Node[info.Section],
 ) {
 	defer p.wg.Done()
@@ -36,7 +36,7 @@ func (p *Parser) parseFile(
 
 	file, err := os.Open(path)
 	if err != nil {
-		helpers.SendCtx(ctx, p.errCh, err)
+		helpers.SendCtx(ctx, p.errCh, fmt.Errorf("error parsing %s: %w", path, err))
 		return
 	}
 	defer func() {
@@ -47,13 +47,14 @@ func (p *Parser) parseFile(
 
 	fileStat, err := file.Stat()
 	if err != nil {
-		helpers.SendCtx(ctx, p.errCh, err)
+		helpers.SendCtx(ctx, p.errCh, fmt.Errorf("error parsing %s: %w", path, err))
 		return
 	}
 
 	sectionsParser, err := sections.NewParser(path, fileStat.ModTime(), bufio.NewScanner(file), p.entriesCh)
 	if err != nil {
-		helpers.SendCtx(ctx, p.errCh, err)
+		helpers.SendCtx(ctx, p.errCh, fmt.Errorf("error parsing %s: %w", path, err))
+		return
 	}
 
 	if err = sectionsParser.Parse(ctx, path, section, sectionsTrieNode); err != nil {

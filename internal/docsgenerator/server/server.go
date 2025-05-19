@@ -1,30 +1,53 @@
 package server
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-
-	"github.com/LeonidS635/HyperLit/internal/docsgenerator/html"
+	"time"
 )
 
-func Start(port int, htmlFilePath string, getDataByHash func(hash string) ([]byte, error)) error {
+func Start(ctx context.Context, port int, htmlFilePath string, getDataByHash func(hash string) ([]byte, error)) error {
 	if _, err := os.Stat(htmlFilePath); err != nil {
 		return err
 	}
 
-	http.HandleFunc(
+	mux := http.NewServeMux()
+	mux.HandleFunc(
 		"/", func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, htmlFilePath)
 		},
 	)
-	http.HandleFunc(
+	mux.HandleFunc(
 		"/gen", func(w http.ResponseWriter, r *http.Request) {
 			openFileHandler(w, r, getDataByHash)
 		},
 	)
 
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+	case err := <-errCh:
+		return err
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return srv.Shutdown(shutdownCtx)
 }
 
 func openFileHandler(w http.ResponseWriter, r *http.Request, getDataByHashFn func(hash string) ([]byte, error)) {
@@ -49,6 +72,20 @@ func openFileHandler(w http.ResponseWriter, r *http.Request, getDataByHashFn fun
 		}
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write(html.FormDocumentation(docs, code))
+	documentation, err := json.Marshal(
+		struct {
+			Docs string `json:"docs"`
+			Code string `json:"code"`
+		}{
+			Docs: string(docs),
+			Code: string(code),
+		},
+	)
+	if err != nil {
+		http.Error(w, "error marshalling documentation", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Write(documentation)
 }

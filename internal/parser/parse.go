@@ -10,7 +10,7 @@ import (
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/tree"
 )
 
-func (p *Parser) parse(ctx context.Context, path string) (*trie.Node[info.Section], error) {
+func (p *parserWithChannels) parse(ctx context.Context, path string) (*trie.Node[info.Section], error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -24,10 +24,10 @@ func (p *Parser) parse(ctx context.Context, path string) (*trie.Node[info.Sectio
 
 	if fileInfo.IsDir() {
 		p.wg.Add(1)
-		p.parseDir(ctx, path, section, sectionsTrieRootNode)
+		go p.parseDir(ctx, path, section, sectionsTrieRootNode)
 	} else {
 		p.wg.Add(1)
-		p.parseFile(ctx, path, section, sectionsTrieRootNode)
+		go p.parseFile(ctx, path, section, sectionsTrieRootNode)
 	}
 
 	if err = helpers.WaitCtx(ctx, &p.wg, p.errCh); err != nil {

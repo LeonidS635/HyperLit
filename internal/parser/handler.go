@@ -2,15 +2,13 @@ package parser
 
 import (
 	"context"
+	"sync"
 
+	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
 )
-
-// TODO: Think about possible send on close error channel problem
-// TODO: Make channels buffered
-// TODO: replace global parser channels with local ones
 
 func (p *Parser) HandleParsedSections(
 	ctx context.Context, path string, handler func(ctx context.Context, section entry.Interface) error,
@@ -18,30 +16,48 @@ func (p *Parser) HandleParsedSections(
 	parseCtx, parseCancel := context.WithCancel(ctx)
 	defer parseCancel()
 
+	localParser := newParserWithChannels(p)
 	var rootSectionsTrieNode *trie.Node[info.Section]
-	var err error
 
-	p.initChannels()
+	var parseWg sync.WaitGroup
+	errCh := make(chan error)
+
+	parseWg.Add(1)
 	go func() {
-		rootSectionsTrieNode, err = p.parse(parseCtx, path)
-		p.closeChannels()
+		defer parseWg.Done()
+
+		var err error
+		rootSectionsTrieNode, err = localParser.parse(parseCtx, path)
+		if err != nil {
+			helpers.SendCtx(parseCtx, errCh, err)
+			return
+		}
+
+		close(localParser.entriesCh)
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-p.errCh:
-			if err != nil {
-				return nil, err
-			}
-		case section, ok := <-p.entriesCh:
-			if !ok {
-				return rootSectionsTrieNode, err
-			}
-			if err := handler(parseCtx, section); err != nil {
-				return nil, err
+	parseWg.Add(1)
+	go func() {
+		defer parseWg.Done()
+
+		for {
+			select {
+			case <-parseCtx.Done():
+				return
+			case section, ok := <-localParser.entriesCh:
+				if !ok {
+					return
+				}
+				if err := handler(parseCtx, section); err != nil {
+					helpers.SendCtx(parseCtx, errCh, err)
+					return
+				}
 			}
 		}
+	}()
+
+	if err := helpers.WaitCtx(ctx, &parseWg, errCh); err != nil {
+		return nil, err
 	}
+	return rootSectionsTrieNode, nil
 }

@@ -3,6 +3,7 @@ package vcs
 import (
 	"context"
 
+	"github.com/LeonidS635/HyperLit/internal/helpers"
 	"github.com/LeonidS635/HyperLit/internal/helpers/trie"
 	"github.com/LeonidS635/HyperLit/internal/info"
 	"github.com/LeonidS635/HyperLit/internal/vcs/objects/entry"
@@ -15,8 +16,8 @@ type VCS struct {
 	storage  *storage.ObjectsStorage
 }
 
-func NewVCS(projectPath, hlPath string) VCS {
-	return VCS{
+func NewVCS(projectPath, hlPath string) *VCS {
+	return &VCS{
 		rootHash: roothash.NewRoot(hlPath),
 		storage:  storage.NewObjectsStorage(projectPath, hlPath),
 	}
@@ -27,10 +28,16 @@ func (v *VCS) Init() error {
 }
 
 func (v *VCS) SaveNewEntry(ctx context.Context, entry entry.Interface) error {
+	if helpers.IsCtxCancelled(ctx) {
+		return ctx.Err()
+	}
 	return v.storage.SaveNewEntry(entry)
 }
 
 func (v *VCS) SaveOldEntry(ctx context.Context, hash string) error {
+	if helpers.IsCtxCancelled(ctx) {
+		return ctx.Err()
+	}
 	return v.storage.SaveOldEntry(hash)
 }
 
@@ -47,6 +54,9 @@ func (v *VCS) LoadEntryData(hash string) ([]byte, error) {
 }
 
 func (v *VCS) Dump(ctx context.Context) error {
+	if helpers.IsCtxCancelled(ctx) {
+		return ctx.Err()
+	}
 	return v.storage.Dump()
 }
 

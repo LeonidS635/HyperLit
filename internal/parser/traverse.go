@@ -11,9 +11,8 @@ import (
 )
 
 func (p *Parser) Traverse(ctx context.Context, path string) (*trie.Node[info.File], error) {
-	// Reopen channels
-	p.initChannels()
-	defer p.closeChannels()
+	// Create local parser
+	traverser := newParserWithChannels(p)
 
 	filesTrieRootNode := trie.NewNode[info.File]()
 
@@ -22,16 +21,16 @@ func (p *Parser) Traverse(ctx context.Context, path string) (*trie.Node[info.Fil
 	defer traverseCancel()
 
 	// Start traversing
-	p.wg.Add(1)
-	go p.traverse(traverseCtx, path, filesTrieRootNode)
+	traverser.wg.Add(1)
+	go traverser.traverse(traverseCtx, path, filesTrieRootNode)
 
-	if err := helpers.WaitCtx(traverseCtx, &p.wg, p.errCh); err != nil {
+	if err := helpers.WaitCtx(traverseCtx, &traverser.wg, traverser.errCh); err != nil {
 		return nil, err
 	}
 	return filesTrieRootNode, nil
 }
 
-func (p *Parser) traverse(ctx context.Context, path string, curNode *trie.Node[info.File]) {
+func (p *parserWithChannels) traverse(ctx context.Context, path string, curNode *trie.Node[info.File]) {
 	defer p.wg.Done()
 	if helpers.IsCtxCancelled(ctx) {
 		return
@@ -69,7 +68,7 @@ func (p *Parser) traverse(ctx context.Context, path string, curNode *trie.Node[i
 	}
 }
 
-func (p *Parser) getDirEntries(ctx context.Context, dir string) []os.DirEntry {
+func (p *parserWithChannels) getDirEntries(ctx context.Context, dir string) []os.DirEntry {
 	ok := p.sema.Acquire(ctx)
 	if !ok {
 		return nil

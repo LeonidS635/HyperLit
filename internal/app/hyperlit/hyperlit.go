@@ -24,7 +24,7 @@ type HyperLit struct {
 
 	docsGenerator docsgenerator.Generator
 	parser        *parser.Parser
-	vcs           vcs.VCS
+	vcs           *vcs.VCS
 }
 
 func New(projectPath string) *HyperLit {

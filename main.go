@@ -4,32 +4,31 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"os/signal"
 
 	"github.com/LeonidS635/HyperLit/cmd"
 	"github.com/LeonidS635/HyperLit/internal/app/hyperlit"
-	"github.com/spf13/pflag"
 )
 
-var path string
-
-func init() {
-	pflag.StringVar(&path, "path", "", "project path")
-}
-
 func main() {
-	pflag.Parse()
+	path, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	ex, _ := os.Executable()
-	exPath := filepath.Dir(ex)
-	path = filepath.Join(exPath, path)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
 	hl := hyperlit.New(path)
-	defer hl.Clear()
+	defer func() {
+		if err := hl.Clear(); err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	cmd.InitCmds(hl)
-	if err := cmd.Execute(context.TODO()); err != nil {
+	if err := cmd.Execute(ctx); err != nil {
 		fmt.Println(err)
-		os.Exit(1)
 	}
 }
