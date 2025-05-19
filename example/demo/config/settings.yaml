@@ -1,0 +1,14 @@
+# @@docs default-config
+# Default configuration for the application.
+
+server:
+  host: localhost
+  port: 8080
+
+# @@docs logging
+# Logging configuration section.
+# This uses YAML comment style.
+
+logging:
+  level: debug
+  file: /var/log/app.log
