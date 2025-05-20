@@ -1,6 +1,8 @@
 package comments
 
-import "bytes"
+import (
+	"bytes"
+)
 
 // IsComment checks whether a line is a comment line
 // (starts with single-line comment characters or is inside a multi-line comment).
@@ -19,14 +21,18 @@ func (a *Analyzer) IsComment(line []byte) ([]byte, bool) {
 	}
 
 	// Single line comment
-	if bytes.HasPrefix(line, a.syntax.SingleLine) {
-		return bytes.TrimPrefix(line, a.syntax.SingleLine), true
+	if len(a.syntax.SingleLine) > 0 {
+		if bytes.HasPrefix(line, a.syntax.SingleLine) {
+			return bytes.TrimPrefix(line, a.syntax.SingleLine), true
+		}
 	}
 
 	// Multiline comment
-	if bytes.HasPrefix(line, a.syntax.MultiLineStart) {
-		a.isInMultiLineSection = true
-		return bytes.TrimPrefix(line, a.syntax.MultiLineStart), true
+	if len(a.syntax.MultiLineStart) > 0 {
+		if bytes.HasPrefix(line, a.syntax.MultiLineStart) {
+			a.isInMultiLineSection = true
+			return bytes.TrimPrefix(line, a.syntax.MultiLineStart), true
+		}
 	}
 
 	return line, false

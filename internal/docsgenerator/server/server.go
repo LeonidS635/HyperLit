@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-func Start(ctx context.Context, port int, htmlFilePath string, getDataByHash func(hash string) ([]byte, error)) error {
+func Start(
+	ctx context.Context, port int, htmlFilePath string, getDataByHash func(hash string) ([]byte, error), md bool,
+) error {
 	if _, err := os.Stat(htmlFilePath); err != nil {
 		return err
 	}
@@ -22,7 +24,7 @@ func Start(ctx context.Context, port int, htmlFilePath string, getDataByHash fun
 	)
 	mux.HandleFunc(
 		"/gen", func(w http.ResponseWriter, r *http.Request) {
-			openFileHandler(w, r, getDataByHash)
+			openFileHandler(w, r, getDataByHash, md)
 		},
 	)
 
@@ -50,7 +52,9 @@ func Start(ctx context.Context, port int, htmlFilePath string, getDataByHash fun
 	return srv.Shutdown(shutdownCtx)
 }
 
-func openFileHandler(w http.ResponseWriter, r *http.Request, getDataByHashFn func(hash string) ([]byte, error)) {
+func openFileHandler(
+	w http.ResponseWriter, r *http.Request, getDataByHashFn func(hash string) ([]byte, error), md bool,
+) {
 	codeHash := r.URL.Query().Get("code")
 	docsHash := r.URL.Query().Get("docs")
 
@@ -76,9 +80,11 @@ func openFileHandler(w http.ResponseWriter, r *http.Request, getDataByHashFn fun
 		struct {
 			Docs string `json:"docs"`
 			Code string `json:"code"`
+			Md   bool   `json:"md"`
 		}{
 			Docs: string(docs),
 			Code: string(code),
+			Md:   md,
 		},
 	)
 	if err != nil {

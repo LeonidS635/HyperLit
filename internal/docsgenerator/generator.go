@@ -29,6 +29,6 @@ func (g Generator) Generate(rootNode *trie.Node[info.Section], rootName string) 
 	return html.Generate(g.htmlFilepath, rootNode, rootName)
 }
 
-func (g Generator) StartServer(ctx context.Context, port int) error {
-	return server.Start(ctx, port, g.htmlFilepath, g.getDataByHash)
+func (g Generator) StartServer(ctx context.Context, port int, md bool) error {
+	return server.Start(ctx, port, g.htmlFilepath, g.getDataByHash, md)
 }

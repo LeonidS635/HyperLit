@@ -39,7 +39,7 @@
 
             const markdownContent = data.docs ? `
                 <div class="markdown-content">
-                    ${marked.parse(data.docs)}
+                    ${data.md ? marked.parse(data.docs) : `<pre>${data.docs}</pre>`}
                 </div>` : ''
             ;
 
@@ -51,7 +51,7 @@
 	                        <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 	                    </svg>
 	                </div>
-	                <pre class="code-block hidden"><code>${escapeHtml(data.code)}</code></pre>
+	                <pre class="code code-block hidden"><code>${escapeHtml(data.code)}</code></pre>
                 </div>` : ''
             ;
 
